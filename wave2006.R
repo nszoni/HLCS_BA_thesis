@@ -19,7 +19,7 @@ setwd(wd)
 
 df = read_dta("eletpalya_a.dta")
 
-pdf = pdata.frame(df, index = c("azon", "hullam")) #cross sectional and wave dimensions
+pdf = pdata.frame(df, index = c("azon", "xhullam")) #cross sectional and wave dimensions
 pdim(pdf)
 
 #omitting irrelevant variables
@@ -57,3 +57,60 @@ pdf1 = pdf %>% select(c(sorszam, suly, onsuly_minta, hullam, chullam, xhullam, a
                         ascore, ainvalid, ahomesc, acognisc, aemotisc, amvan, amedes, amcsall,
                         amisk, amdolg, amnemz1, amkeres, amgyerek, afvan, afedes, afcsall, afisk,
                         afdolg, afnemz1, afkeres, afgyerek, acsaljov, aszeg, atest))
+
+pdf2 = pdf %>% select(c(azon,
+                        xhullam,
+                        af002a01,
+                        af006x01,
+                        af007xxx,
+                        af010x01, 
+                        af011xxx,
+                        af020xxx, 
+                        af095xxx, 
+                        af070a15, 
+                        af070b15,
+                        af070c15,
+                        af070d15,
+                        af133axx,
+                        ad030exx,
+                        af135exx, 
+                        af140xxx, 
+                        af145cxx, 
+                        af176xxx, 
+                        af190xxx,
+                        ad025axx, 
+                        ad025cxx, 
+                        af209xxx, 
+                        ahomesc, 
+                        acognisc, 
+                        aemotisc, 
+                        amedes, 
+                        amvan,
+                        amisk, 
+                        amdolg, 
+                        amkeres, 
+                        afvan,
+                        afedes, 
+                        afisk, 
+                        afdolg, 
+                        afkeres, 
+                        atest, 
+                        aszeg,
+                        acsaljov,
+                        m_zpsc,
+                        o_zpsc, 
+                        ad003axx,
+                        ad003bxx,
+                        ad003cxx,
+                        ad003dxx,
+                        ad003exx,
+                        ad004axx,
+                        ad004bxx,
+                        af071xxx,
+                        af072xxx,
+                        af094xxx,
+                        af122xxx,
+                        af127axx))
+# Data cleaning -----------------------------------------------------------
+
+
