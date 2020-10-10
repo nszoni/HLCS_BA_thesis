@@ -14,16 +14,16 @@ library(data.table)
 library(plm)
 library(stargazer)
 
-wd = file.path("~", "thesis_eletpalya", "kesz")
+wd <- file.path("~", "thesis_eletpalya", "kesz")
 setwd(wd)
 
-df = read_dta("eletpalya_a.dta")
+df <- read_dta("eletpalya_a.dta")
 
-pdf = pdata.frame(df, index = c("azon", "xhullam")) #cross sectional and wave dimensions
+pdf <- pdata.frame(df, index <- c("azon", "xhullam")) #cross sectional and wave dimensions
 pdim(pdf)
 
 #omitting irrelevant variables
-pdf1 = pdf %>% select(c(sorszam, suly, onsuly_minta, hullam, chullam, xhullam, azon,
+pdf1 <- pdf %>% select(c(sorszam, suly, onsuly_minta, hullam, chullam, xhullam, azon,
                         evfolyam, diakid, csaksni, sniszam, t2, t1ev, m_zpsc, o_zpsc,
                         o, m, af001xxx, af002a01, af002a02, af002a03, af002a04, af002a05,
                         af002a07, af002b01, af002b03, af002b04, af002b05, af002b07, af002b08,
@@ -58,13 +58,17 @@ pdf1 = pdf %>% select(c(sorszam, suly, onsuly_minta, hullam, chullam, xhullam, a
                         amisk, amdolg, amnemz1, amkeres, amgyerek, afvan, afedes, afcsall, afisk,
                         afdolg, afnemz1, afkeres, afgyerek, acsaljov, aszeg, atest))
 
-pdf2 = pdf %>% select(c(azon,
+pdf2 <- pdf %>% select(c(azon,
                         xhullam,
                         af002a01,
                         af006x01,
+                        af006x02,
                         af007xxx,
-                        af010x01, 
+                        af008xxx,
+                        af010x01,
+                        af010x02,
                         af011xxx,
+                        af012xxx,
                         af020xxx, 
                         af095xxx, 
                         af070a15, 
@@ -108,9 +112,123 @@ pdf2 = pdf %>% select(c(azon,
                         ad004bxx,
                         af071xxx,
                         af072xxx,
-                        af094xxx,
                         af122xxx,
                         af127axx))
 # Data cleaning -----------------------------------------------------------
 
+names(pdf2) <- c('ID',
+                'nwave',
+                'gender',
+                'mbio',
+                'mstep',
+                'age_at_sepm',
+                'msep_reason',
+                'fbio',
+                'fstep',
+                'age_at_sepf',
+                'fsep_reason',
+                'citizenship',
+                'same_school',
+                'rschange1',
+                'rschange2',
+                'rschange3',
+                'rschange4',
+                'schooltalk',
+                'studyparent',
+                'housework',
+                'xtraclass',
+                'flove',
+                'mnsal',
+                'fnsal',
+                'workdesk',
+                'comp',
+                'internet',
+                'homesc',
+                'cognisc',
+                'emotisc',
+                'mcrtaker',
+                'ismother',
+                'mdegree',
+                'mactivity',
+                'mnsal2',
+                'isfather',
+                'fcrtaker',
+                'fdegree',
+                'factivity',
+                'fnsal2',
+                'nsibling',
+                'pind',
+                'fam_income',
+                'math_comp',
+                'read_comp',
+                'math',
+                'gram',
+                'liter',
+                'behav',
+                'dilig',
+                'intfgrade',
+                'decfgrade',
+                'rep_4',
+                'rep_58',
+                'no_seceduc',
+                'seceduc')
 
+
+# Treating dependent variables---------------------------------------------------------
+
+concatFgrade <- function(pdf2){
+  pdf2$fgrade <<- as.numeric(paste(pdf2$intfgrade, pdf2$decfgrade, sep = "."))
+}
+
+concatFgrade(pdf2)
+
+#those with final grades
+final_grade = subset(pdf2, (fgrade <= 5.0 & !is.na(fgrade)))
+
+#those with math grade
+math_grade = subset(pdf2, (math <= 5.0 & !is.na(math)))
+
+#with grammar grade
+gram_grade = subset(pdf2, (gram <= 5.0 & !is.na(gram)))
+
+#with  literature grade
+liter_grade = subset(pdf2, (liter <= 5.0 & !is.na(liter)))
+
+#with behavior grade
+behav_grade = subset(pdf2, (behav <= 5.0 & !is.na(behav)))
+
+#with diligence grade
+behav_grade = subset(pdf2, (dilig <= 5.0 & !is.na(dilig)))
+
+#with math competence test score
+math_ctest = subset(pdf2, !is.na(math_comp))
+
+#with reading competence test score
+math_ctest = subset(pdf2, !is.na(read_comp))
+
+#repeated school before 4th grade (dummy)
+rep_4 = subset(pdf2, !is.na(rep_4))
+
+#repeated school between 5th and 8th (dummy)
+rep_5to8 = subset(pdf2, !is.na(rep_58))
+
+#wants to study further (dummy)
+study_further = subset(pdf2, seceduc %in% c(1,2,3))
+
+
+# Filtered panels ------------------------------------------
+
+#for observing differences father only families
+father_o_fam = subset(pdf2, (age_at_sepm %in% range(0,20) & fbio == 1 & mbio == 2 & mstep == 2))
+
+#for observing differences in mother only families
+mother_o_fam = subset(pdf2, (age_at_sepf %in% range(0,20) & mbio == 1 & fbio == 2 & fstep == 2))
+
+#stepmother families
+stepmother_fam = subset(pdf2, (age_at_sepm %in% range(0,20) & fbio == 1 & mstep == 1))
+
+#stepfather families
+stepfather_fam = subset(pdf2, (age_at_sepf %in% range(0,20) & mbio == 1 & fstep == 1))
+
+#foster families
+foster_fam = subset(pdf2, (age_at_sepf %in% range(0,20) & mstep == 1 & fstep == 1))
