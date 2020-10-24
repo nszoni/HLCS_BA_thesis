@@ -60,7 +60,6 @@ df2 <- df %>% select(c(azon,
                         af179xxx,
                         af200xxx,
                         af201xxx,
-                        af134xxx,
                         ad024bxx,
                         ad025axx, 
                         ad025cxx, 
@@ -131,7 +130,6 @@ names(df2) <- c('ID',
                 'wnbrh',
                 'cnbrh',
                 'nbooks',
-                'nbooks2',
                 'workdesk',
                 'comp',
                 'internet',
@@ -184,7 +182,6 @@ df2[,!names(df2) %in% c("age_at_sepf",
                         "methnic",
                         "fethnic",
                         "nbooks",
-                        "nbooks2",
                         "fsep_reason",
                         "mdegree",
                         "fdegree",
@@ -198,7 +195,6 @@ df2[,!names(df2) %in% c("age_at_sepf",
                                                                "methnic",
                                                                "fethnic",
                                                                "nbooks",
-                                                               "nbooks2",
                                                                "fsep_reason",
                                                                "mdegree",
                                                                "fdegree",
@@ -254,7 +250,51 @@ df2[,!names(df2) %in% c("age_at_sepf",
 
 # Descriptive summaries ----------------------------------------------------
 
-df2 %>% remove_all_labels() %>% dfSummary()
+glimpse(df2)
+df2 %>% remove_all_labels() %>% dfSummary(., style = "grid", 
+                                          graph.magnif = 0.75, valid.col = FALSE)
+
+# Cross tabulations -------------------------------------------------------
+
+ctable(df2$gender, df2$mbio, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$gender, df2$fbio, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$gender, df2$mstep, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$gender, df2$fstep, prop = "r", chisq = TRUE, OR = TRUE)
+
+ctable(df2$same_school, df2$fbio, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$same_school, df2$mbio, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$same_school, df2$mstep, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$same_school, df2$fstep, prop = "r", chisq = TRUE, OR = TRUE)
+
+ctable(df2$othersc, df2$fbio, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$othersc, df2$mbio, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$othersc, df2$mstep, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$othersc, df2$fstep, prop = "r", chisq = TRUE, OR = TRUE)
+
+ctable(df2$rep4, df2$fbio, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$rep4, df2$mbio, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$rep4, df2$mstep, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$rep4, df2$fstep, prop = "r", chisq = TRUE, OR = TRUE)
+
+ctable(df2$rep58, df2$fbio, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$rep58, df2$mbio, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$rep58, df2$mstep, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$rep58, df2$fstep, prop = "r", chisq = TRUE, OR = TRUE)
+
+ctable(df2$seceduc, df2$fbio, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$seceduc, df2$mbio, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$seceduc, df2$mstep, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$seceduc, df2$fstep, prop = "r", chisq = TRUE, OR = TRUE)
+
+ctable(df2$pind, df2$fbio, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$pind, df2$mbio, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$pind, df2$mstep, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$pind, df2$fstep, prop = "r", chisq = TRUE, OR = TRUE)
+
+# Creating panel df -------------------------------------------------------
+
+pdf <- pdata.frame(df2, index <- c("azon", "hullam")) #cross sectional and wave dimensions
+pdim(pdf)
 
 # Treating dependent variables---------------------------------------------------------
 
@@ -291,7 +331,6 @@ rep_5to8 = subset(pdf, !is.na(rep58))
 #wants to study further (dummy)
 study_further = subset(pdf, seceduc %in% c(1,2,3))
 
-
 # Filtered panels ------------------------------------------
 
 #father only families
@@ -309,7 +348,7 @@ stepfather_fam = subset(pdf, (mbio == 1 & fstep == 1))
 #foster families
 foster_fam = subset(pdf, (mstep == 1 & fstep == 1))
 
-# Creating panel df -------------------------------------------------------
+# Models ------------------------------------------------------------------
+#bivariate relationship between family structure and final grade
 
-pdf <- pdata.frame(df, index <- c("azon", "hullam")) #cross sectional and wave dimensions
-pdim(pdf)
+
