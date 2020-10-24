@@ -1,12 +1,12 @@
 
-# -------------------------------------------------------------------------
+
+# NFO ---------------------------------------------------------------------
 
 #Életpálya 2006, 1. hullám
 #Author: Nguyen Nam Son
 #Date: 05-10-2020
 
-# -------------------------------------------------------------------------
-#loading packages
+# Setup -------------------------------------------------------------------
 
 library(haven)
 library(ggplot2)
@@ -15,40 +15,53 @@ library(data.table)
 library(plm)
 library(stargazer)
 library(labelled)
-library(sjmisc)
+library(sjlabelled)
+library(summarytools)
 
 wd <- file.path("~", "thesis_eletpalya", "kesz")
 setwd(wd)
 
 df <- read_dta("eletpalya_a.dta")
 
-pdf <- pdata.frame(df, index <- c("azon", "hullam")) #cross sectional and wave dimensions
-pdim(pdf)
-
-pdf2 <- pdf %>% select(c(azon,
+df2 <- df %>% select(c(azon,
                         hullam,
                         af002a01,
                         af006x01,
                         af006x02,
                         af007xxx,
                         af008xxx,
+                        af009xxx,
                         af010x01,
                         af010x02,
                         af011xxx,
                         af012xxx,
+                        af013xxx,
                         af020xxx, 
-                        af095xxx, 
+                        af095xxx,
+                        af096xxx,
+                        af069xxx,
                         af070a15, 
                         af070b15,
                         af070c15,
                         af070d15,
+                        af080xxx,
+                        af081xxx,
+                        af084xxx,
                         af133axx,
                         ad030exx,
                         af135exx, 
                         af140xxx, 
-                        af145cxx, 
-                        af176xxx, 
+                        af145cxx,
+                        af145dxx,
+                        af146xxx,
+                        af167xxx, 
                         af190xxx,
+                        af156xxx,
+                        af179xxx,
+                        af200xxx,
+                        af201xxx,
+                        af134xxx,
+                        ad024bxx,
                         ad025axx, 
                         ad025cxx, 
                         af209xxx, 
@@ -77,34 +90,48 @@ pdf2 <- pdf %>% select(c(azon,
                         ad004bxx,
                         af071xxx,
                         af072xxx,
-                        af122xxx,
                         af127axx))
 # Data cleaning -----------------------------------------------------------
 
-names(pdf2) <- c('ID',
+names(df2) <- c('ID',
                 'nwave',
                 'gender',
                 'mbio',
                 'mstep',
                 'age_at_sepm',
                 'msep_reason',
+                'age_at_remf',
                 'fbio',
                 'fstep',
                 'age_at_sepf',
                 'fsep_reason',
+                'age_at_remm',
                 'citizenship',
                 'same_school',
+                'rschange',
+                'othersc',
                 'rschange1',
                 'rschange2',
                 'rschange3',
                 'rschange4',
+                'pmeet',
+                'pttalk',
+                'peduc_asp',
                 'schooltalk',
                 'studyparent',
                 'housework',
                 'xtraclass',
                 'flove',
+                'mrel',
+                'tsfather',
                 'mnsal',
                 'fnsal',
+                'methnic',
+                'fethnic',
+                'wnbrh',
+                'cnbrh',
+                'nbooks',
+                'nbooks2',
                 'workdesk',
                 'comp',
                 'internet',
@@ -133,78 +160,156 @@ names(pdf2) <- c('ID',
                 'decfgrade',
                 'rep4',
                 'rep58',
-                'no_seceduc',
                 'seceduc')
-
 
 # Removing labels and assigning NAs ---------------------------------------
 
-get_labels(pdf2)
+get_labels(df2)
 
-pdf3 <- pdf2 %>% remove_val_labels()
-
-concatFgrade <- function(pdf3){
-  pdf3$fgrade <<- as.numeric(paste(pdf3$intfgrade, pdf3$decfgrade, sep = "."))
+concatFgrade <- function(df2){
+  df2$fgrade <<- as.numeric(paste(df2$intfgrade, df2$decfgrade, sep = "."))
 }
 
-concatFgrade(pdf3)
+concatFgrade(df2)
+df2 <- df2[,!(names(df2) %in% c("intfgrade", "decfgrade"))]
 
-pdf3[pdf3 == -6 | pdf3 == 99 | pdf3 == 999 | pdf3 == 9999] <- NA
-pdf3$fgrade[pdf3$fgrade > 5] <- NA
+df2[df2 == -6 | df2 == 99 | df2 == 999 | df2 == 9999] <- NA
+df2$fgrade[df2$fgrade > 5] <- NA
 
-pdf3[,!names(pdf3) %in% c("fsep_reason","mdegree","fdegree","mactivity","factivity","no_seceduc")][pdf3[,!names(pdf3) %in% c("fsep_reason","mdegree","fdegree","mactivity","factivity","no_seceduc")] == 9 ] <- NA
+df2[,!names(df2) %in% c("age_at_sepf",
+                        "age_at_sepm",
+                        "age_at_remf",
+                        "age_at_remm",
+                        "mrel",
+                        "methnic",
+                        "fethnic",
+                        "nbooks",
+                        "nbooks2",
+                        "fsep_reason",
+                        "mdegree",
+                        "fdegree",
+                        "mactivity",
+                        "factivity",
+                        "no_seceduc")][df2[,!names(df2) %in% c("age_at_sepf",
+                                                               "age_at_sepm",
+                                                               "age_at_remf",
+                                                               "age_at_remm",
+                                                               "mrel",
+                                                               "methnic",
+                                                               "fethnic",
+                                                               "nbooks",
+                                                               "nbooks2",
+                                                               "fsep_reason",
+                                                               "mdegree",
+                                                               "fdegree",
+                                                               "mactivity",
+                                                               "factivity",
+                                                               "no_seceduc")] == 9 ] <- NA
+#factorizing
+# names <- c('msep_reason',
+#            'fsep_reason',
+#            'rschange',
+#            'rschange1',
+#            'rschange2',
+#            'rschange3',
+#            'rschange4',
+#            'pmeet',
+#            'pttalk',
+#            'schooltalk', 
+#            'studyparent',
+#            'peduc_asp',
+#            'housework',
+#            'flove',
+#            'mrel',
+#            'tsfather',
+#            'methnic',
+#            'fethnic',
+#            'wnbrh',
+#            'cnbrh',
+#            'mactivity',
+#            'factivity',
+#            'mdegree',
+#            'fdegree',
+#            'pind')
+# 
+# df2[, fct] <- as.factor(df2[, fct])
+# 
+# bool <- c('gender',
+#           'mbio',
+#           'mstep',
+#           'fbio',
+#           'fstep',
+#           'same_school',
+#           'othersc',
+#           'xtraclass',
+#           'workdesk',
+#           'comp',
+#           'internet',
+#           'mcrtaker',
+#           'ismother',
+#           'isfather',
+#           'fcrtaker')
+# 
+# df2[, bool] <- as.logical(df2[, bool])
 
-summary(pdf3)
+# Descriptive summaries ----------------------------------------------------
+
+df2 %>% remove_all_labels() %>% dfSummary()
 
 # Treating dependent variables---------------------------------------------------------
 
 #those with final grades
-final_grade = subset(pdf2, (fgrade <= 5.0 & !is.na(fgrade)))
+final_grade = subset(pdf, (fgrade <= 5.0 & !is.na(fgrade)))
 
 #those with math grade
-math_grade = subset(pdf2, (math <= 5.0 & !is.na(math)))
+math_grade = subset(pdf, (math <= 5.0 & !is.na(math)))
 
 #with grammar grade
-gram_grade = subset(pdf2, (gram <= 5.0 & !is.na(gram)))
+gram_grade = subset(pdf, (gram <= 5.0 & !is.na(gram)))
 
 #with  literature grade
-liter_grade = subset(pdf2, (liter <= 5.0 & !is.na(liter)))
+liter_grade = subset(pdf, (liter <= 5.0 & !is.na(liter)))
 
 #with behavior grade
-behav_grade = subset(pdf2, (behav <= 5.0 & !is.na(behav)))
+behav_grade = subset(pdf, (behav <= 5.0 & !is.na(behav)))
 
 #with diligence grade
-behav_grade = subset(pdf2, (dilig <= 5.0 & !is.na(dilig)))
+behav_grade = subset(pdf, (dilig <= 5.0 & !is.na(dilig)))
 
 #with math competence test score
-math_ctest = subset(pdf2, !is.na(math_comp))
+math_ctest = subset(pdf, !is.na(math_comp))
 
 #with reading competence test score
-math_ctest = subset(pdf2, !is.na(read_comp))
+math_ctest = subset(pdf, !is.na(read_comp))
 
 #repeated school before 4th grade (dummy)
-rep_4 = subset(pdf2, !is.na(rep4))
+rep_4 = subset(pdf, !is.na(rep4))
 
 #repeated school between 5th and 8th (dummy)
-rep_5to8 = subset(pdf2, !is.na(rep58))
+rep_5to8 = subset(pdf, !is.na(rep58))
 
 #wants to study further (dummy)
-study_further = subset(pdf2, seceduc %in% c(1,2,3))
+study_further = subset(pdf, seceduc %in% c(1,2,3))
 
 
 # Filtered panels ------------------------------------------
 
 #father only families
-father_o_fam = subset(pdf2, (fbio == 1 & mbio == 2 & mstep == 2))
+father_o_fam = subset(pdf, (fbio == 1 & mbio == 2 & mstep == 2))
 
 #mother only families
-mother_o_fam = subset(pdf2, (mbio == 1 & fbio == 2 & fstep == 2))
+mother_o_fam = subset(pdf, (mbio == 1 & fbio == 2 & fstep == 2))
 
 #stepmother families
-stepmother_fam = subset(pdf2, (fbio == 1 & mstep == 1))
+stepmother_fam = subset(pdf, (fbio == 1 & mstep == 1))
 
 #stepfather families
-stepfather_fam = subset(pdf2, (mbio == 1 & fstep == 1))
+stepfather_fam = subset(pdf, (mbio == 1 & fstep == 1))
 
 #foster families
-foster_fam = subset(pdf2, (mstep == 1 & fstep == 1))
+foster_fam = subset(pdf, (mstep == 1 & fstep == 1))
+
+# Creating panel df -------------------------------------------------------
+
+pdf <- pdata.frame(df, index <- c("azon", "hullam")) #cross sectional and wave dimensions
+pdim(pdf)
