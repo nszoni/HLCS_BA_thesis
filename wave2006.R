@@ -10,13 +10,14 @@
 
 library(haven)
 library(ggplot2)
-library(dplyr)
+library(magrittr)
 library(data.table)
 library(plm)
 library(stargazer)
 library(labelled)
 library(sjlabelled)
 library(summarytools)
+library(reshape2)
 
 wd <- file.path("~", "thesis_eletpalya", "kesz")
 setwd(wd)
@@ -291,6 +292,80 @@ ctable(df2$pind, df2$mbio, prop = "r", chisq = TRUE, OR = TRUE)
 ctable(df2$pind, df2$mstep, prop = "r", chisq = TRUE, OR = TRUE)
 ctable(df2$pind, df2$fstep, prop = "r", chisq = TRUE, OR = TRUE)
 
+
+# Correlation matrices ----------------------------------------------------
+
+cormatdf <- df2[, c('fgrade',
+                   'math_comp',
+                   'read_comp',
+                   'math',
+                   'gram',
+                   'liter',
+                   'behav',
+                   'dilig',
+                   'age_at_sepm',
+                   'age_at_sepf',
+                   'age_at_remm',
+                   'age_at_remf',
+                   'mnsal',
+                   'fnsal',
+                   'nbooks',
+                   'homesc',
+                   'cognisc',
+                   'emotisc',
+                   'fam_income')]
+
+cormat <- cormatdf %>% remove_all_labels() %>% cor(use = "complete.obs") %>% round(., 2)
+
+# Reorder matrix according to coefficients and hierarchical clustering order
+reorder_cormat <- function(cormat){
+  dd <- as.dist((1-cormat)/2)
+  dd[is.na(dd)] <- 0
+  dd[is.nan(dd)] <- 0
+  hc <- hclust(dd)
+  cormat <-cormat[hc$order, hc$order]
+}
+
+# Get lower triangle of the correlation matrix
+get_lower_tri<-function(cormat){
+  cormat[lower.tri(cormat)] <- NA
+  return(cormat)
+}
+
+cormat <- reorder_cormat(cormat)
+lower_tri <- get_lower_tri(cormat)
+
+# Melt the correlation matrix
+melted_cormat <- melt(lower_tri, na.rm = TRUE)
+
+# Create a ggheatmap
+ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1,1), space = "Lab", 
+                       name="Pearson\nCorrelation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                   size = 12, hjust = 1) )+
+  coord_fixed()
+
+ggheatmap + 
+  geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank(),
+    axis.ticks = element_blank(),
+    legend.justification = c(1, 0),
+    legend.position = c(0.6, 0.7),
+    legend.direction = "horizontal")+
+  guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
+                               title.position = "top", title.hjust = 0.5)) +
+  labs(title = "Correlation heatmap between the non-categorial variables",
+       subtitle = "ordered according to hclust")
+  
 # Creating panel df -------------------------------------------------------
 
 pdf <- pdata.frame(df2, index <- c("azon", "hullam")) #cross sectional and wave dimensions
