@@ -8,6 +8,7 @@
 
 # Setup -------------------------------------------------------------------
 
+library(AER)
 library(haven)
 library(ggplot2)
 library(magrittr)
@@ -202,6 +203,22 @@ df2[,!names(df2) %in% c("age_at_sepf",
                                                                "mactivity",
                                                                "factivity",
                                                                "no_seceduc")] == 9 ] <- NA
+
+attach(df2)
+
+#Creating categorical variable for family structure
+
+df2$fam_str <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'tparent', #two-parent family
+                         ifelse((fbio == 1) & (mbio %in% c(2, NA)) & (mstep %in% c(2, NA)), 'singlef', #single-father family
+                         ifelse((mbio == 1) & (fbio %in% c(2, NA)) & (fstep %in% c(2, NA)), 'singlem', #single-mother family
+                         ifelse((fbio == 1) & (mstep == 1), 'stepm', #step-mother family
+                         ifelse((mbio == 1) & (fstep == 1) & (mrel == 1), 'rem_stepf', # married step-father family
+                         ifelse((mbio == 1) & (fstep == 1) & (mrel %in% c(3,5,7)), 'cohab_stepf', #cohabiting step-father family
+                         ifelse((mstep == 1) & (fstep == 1), 'tfoster', #foster-two-parent family
+                         ifelse((mstep == 1) & (fbio %in% c(2, NA)) & (fstep %in% c(2, NA)), 'smfoster', #foster-single-mother family
+                         ifelse((fstep == 1) & (mbio %in% c(2, NA)) & (mstep %in% c(2, NA)), 'sffoster', #foster-single-father family
+                         ifelse((fbio %in% c(2, NA)) & (mbio %in% c(2, NA)) & (mstep %in% c(2, NA)) & (fstep %in% c(2, NA)), 'alone', NA))))))))))) #does not live with anyone
+
 #factorizing
 # names <- c('msep_reason',
 #            'fsep_reason',
@@ -408,22 +425,52 @@ study_further = subset(pdf, seceduc %in% c(1,2,3))
 
 # Filtered panels ------------------------------------------
 
+#two-parent biological families
+two_p_fam = subset(pdf, fam_str = 'tparent')
+
 #father only families
-father_o_fam = subset(pdf, (fbio == 1 & mbio == 2 & mstep == 2))
+father_o_fam = subset(pdf, fam_str == 'singlef')
 
 #mother only families
-mother_o_fam = subset(pdf, (mbio == 1 & fbio == 2 & fstep == 2))
+mother_o_fam = subset(pdf, fam_str == 'singlem')
 
 #stepmother families
-stepmother_fam = subset(pdf, (fbio == 1 & mstep == 1))
+stepmother_fam = subset(pdf, fam_str == 'stepm')
 
 #stepfather families
-stepfather_fam = subset(pdf, (mbio == 1 & fstep == 1))
+stepfather_fam = subset(pdf, fam_str == 'stepf')
 
 #foster families
-foster_fam = subset(pdf, (mstep == 1 & fstep == 1))
+foster_fam = subset(pdf, fam_str == 'foster')
 
 # Models ------------------------------------------------------------------
-#bivariate relationship between family structure and final grade
+#bivariate pooled OLS regression
+
+ols_bi <- lm(fgrade ~ fam_str, data = df2)
+summary(ols_bi)
+
+#multivariate pooled OLS regression
+
+ols_m1 <- lm(fgrade ~ fam_str + fam_income + gender + homesc + cognisc + emotisc, data = df2)
+summary(ols_m1)
+
+stargazer(ols_bi, ols_m1, type = 'text')
+
+#IV estimation with 2SLS to treat the question of endogeneity
+
+# -------------------------------------------------------------------------
+# 2SLS involves estimating two regressions: In the first stage,
+# the endogenous variable (log price in our example) is regressed
+# on the instrument or instruments (tdiff), along with any other
+# exogenous variables (controls). The estimated coefficients from
+# the first-stage regression are used to predict the endogenous variable (log price).
+# In the second stage, the dependent variable (log quantity) is regressed 
+# on the predicted values of the endogenous variable (predicted log price), 
+# along with the exogenous controls.
+# -------------------------------------------------------------------------
+
+
+
+
 
 
