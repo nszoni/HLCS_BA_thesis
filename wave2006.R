@@ -11,7 +11,7 @@
 library(AER)
 library(haven)
 library(ggplot2)
-library(magrittr)
+library(dplyr)
 library(data.table)
 library(plm)
 library(stargazer)
@@ -26,7 +26,6 @@ setwd(wd)
 df <- read_dta("eletpalya_a.dta")
 
 df2 <- df %>% select(c(azon,
-                        hullam,
                         af002a01,
                         af006x01,
                         af006x02,
@@ -95,7 +94,6 @@ df2 <- df %>% select(c(azon,
 # Data cleaning -----------------------------------------------------------
 
 names(df2) <- c('ID',
-                'nwave',
                 'gender',
                 'mbio',
                 'mstep',
@@ -219,6 +217,8 @@ df2$fam_str <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'tparent', #two-paren
                          ifelse((fstep == 1) & (mbio %in% c(2, NA)) & (mstep %in% c(2, NA)), 'sffoster', #foster-single-father family
                          ifelse((fbio %in% c(2, NA)) & (mbio %in% c(2, NA)) & (mstep %in% c(2, NA)) & (fstep %in% c(2, NA)), 'alone', NA))))))))))) #does not live with anyone
 
+df2$fam_str2 <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'intact', 'nintact'))
+
 #factorizing
 # names <- c('msep_reason',
 #            'fsep_reason',
@@ -269,46 +269,28 @@ df2$fam_str <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'tparent', #two-paren
 # Descriptive summaries ----------------------------------------------------
 
 glimpse(df2)
-df2 %>% remove_all_labels() %>% dfSummary(., style = "grid", 
-                                          graph.magnif = 0.75, valid.col = FALSE)
+
+df2sum <- df2 %>% remove_all_labels() %>% dfSummary(., plain.ascii = FALSE, style = "grid", 
+                                          graph.magnif = 0.75, valid.col = FALSE, tmp.img.dir = "/tmp") 
+
+df2sum$Missing <- NULL
+view(df2sum, file = "~/thesis_eletpalya/df2sum.html")
 
 # Cross tabulations -------------------------------------------------------
 
-ctable(df2$gender, df2$mbio, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$gender, df2$fbio, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$gender, df2$mstep, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$gender, df2$fstep, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$gender, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
 
-ctable(df2$same_school, df2$fbio, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$same_school, df2$mbio, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$same_school, df2$mstep, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$same_school, df2$fstep, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$same_school, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
 
-ctable(df2$othersc, df2$fbio, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$othersc, df2$mbio, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$othersc, df2$mstep, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$othersc, df2$fstep, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$othersc, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
 
-ctable(df2$rep4, df2$fbio, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$rep4, df2$mbio, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$rep4, df2$mstep, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$rep4, df2$fstep, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$rep4, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
 
-ctable(df2$rep58, df2$fbio, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$rep58, df2$mbio, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$rep58, df2$mstep, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$rep58, df2$fstep, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$rep58, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
 
-ctable(df2$seceduc, df2$fbio, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$seceduc, df2$mbio, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$seceduc, df2$mstep, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$seceduc, df2$fstep, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$seceduc, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
 
-ctable(df2$pind, df2$fbio, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$pind, df2$mbio, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$pind, df2$mstep, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$pind, df2$fstep, prop = "r", chisq = TRUE, OR = TRUE)
-
+ctable(df2$pind, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
 
 # Correlation matrices ----------------------------------------------------
 
@@ -385,92 +367,92 @@ ggheatmap +
   
 # Creating panel df -------------------------------------------------------
 
-pdf <- pdata.frame(df2, index <- c("azon", "hullam")) #cross sectional and wave dimensions
-pdim(pdf)
-
-# Treating dependent variables---------------------------------------------------------
-
-#those with final grades
-final_grade = subset(pdf, (fgrade <= 5.0 & !is.na(fgrade)))
-
-#those with math grade
-math_grade = subset(pdf, (math <= 5.0 & !is.na(math)))
-
-#with grammar grade
-gram_grade = subset(pdf, (gram <= 5.0 & !is.na(gram)))
-
-#with  literature grade
-liter_grade = subset(pdf, (liter <= 5.0 & !is.na(liter)))
-
-#with behavior grade
-behav_grade = subset(pdf, (behav <= 5.0 & !is.na(behav)))
-
-#with diligence grade
-behav_grade = subset(pdf, (dilig <= 5.0 & !is.na(dilig)))
-
-#with math competence test score
-math_ctest = subset(pdf, !is.na(math_comp))
-
-#with reading competence test score
-math_ctest = subset(pdf, !is.na(read_comp))
-
-#repeated school before 4th grade (dummy)
-rep_4 = subset(pdf, !is.na(rep4))
-
-#repeated school between 5th and 8th (dummy)
-rep_5to8 = subset(pdf, !is.na(rep58))
-
-#wants to study further (dummy)
-study_further = subset(pdf, seceduc %in% c(1,2,3))
-
-# Filtered panels ------------------------------------------
-
-#two-parent biological families
-two_p_fam = subset(pdf, fam_str = 'tparent')
-
-#father only families
-father_o_fam = subset(pdf, fam_str == 'singlef')
-
-#mother only families
-mother_o_fam = subset(pdf, fam_str == 'singlem')
-
-#stepmother families
-stepmother_fam = subset(pdf, fam_str == 'stepm')
-
-#stepfather families
-stepfather_fam = subset(pdf, fam_str == 'stepf')
-
-#foster families
-foster_fam = subset(pdf, fam_str == 'foster')
-
-# Models ------------------------------------------------------------------
-#bivariate pooled OLS regression
-
-ols_bi <- lm(fgrade ~ fam_str, data = df2)
-summary(ols_bi)
-
-#multivariate pooled OLS regression
-
-ols_m1 <- lm(fgrade ~ fam_str + fam_income + gender + homesc + cognisc + emotisc, data = df2)
-summary(ols_m1)
-
-stargazer(ols_bi, ols_m1, type = 'text')
-
-#IV estimation with 2SLS to treat the question of endogeneity
-
-# -------------------------------------------------------------------------
-# 2SLS involves estimating two regressions: In the first stage,
-# the endogenous variable (log price in our example) is regressed
-# on the instrument or instruments (tdiff), along with any other
-# exogenous variables (controls). The estimated coefficients from
-# the first-stage regression are used to predict the endogenous variable (log price).
-# In the second stage, the dependent variable (log quantity) is regressed 
-# on the predicted values of the endogenous variable (predicted log price), 
-# along with the exogenous controls.
-# -------------------------------------------------------------------------
-
-
-
-
-
-
+# pdf <- pdata.frame(df2, index <- c("azon", "hullam")) #cross sectional and wave dimensions
+# pdim(pdf)
+# 
+# # Treating dependent variables---------------------------------------------------------
+# 
+# #those with final grades
+# final_grade = subset(pdf, (fgrade <= 5.0 & !is.na(fgrade)))
+# 
+# #those with math grade
+# math_grade = subset(pdf, (math <= 5.0 & !is.na(math)))
+# 
+# #with grammar grade
+# gram_grade = subset(pdf, (gram <= 5.0 & !is.na(gram)))
+# 
+# #with  literature grade
+# liter_grade = subset(pdf, (liter <= 5.0 & !is.na(liter)))
+# 
+# #with behavior grade
+# behav_grade = subset(pdf, (behav <= 5.0 & !is.na(behav)))
+# 
+# #with diligence grade
+# behav_grade = subset(pdf, (dilig <= 5.0 & !is.na(dilig)))
+# 
+# #with math competence test score
+# math_ctest = subset(pdf, !is.na(math_comp))
+# 
+# #with reading competence test score
+# math_ctest = subset(pdf, !is.na(read_comp))
+# 
+# #repeated school before 4th grade (dummy)
+# rep_4 = subset(pdf, !is.na(rep4))
+# 
+# #repeated school between 5th and 8th (dummy)
+# rep_5to8 = subset(pdf, !is.na(rep58))
+# 
+# #wants to study further (dummy)
+# study_further = subset(pdf, seceduc %in% c(1,2,3))
+# 
+# # Filtered panels ------------------------------------------
+# 
+# #two-parent biological families
+# two_p_fam = subset(pdf, fam_str = 'tparent')
+# 
+# #father only families
+# father_o_fam = subset(pdf, fam_str == 'singlef')
+# 
+# #mother only families
+# mother_o_fam = subset(pdf, fam_str == 'singlem')
+# 
+# #stepmother families
+# stepmother_fam = subset(pdf, fam_str == 'stepm')
+# 
+# #stepfather families
+# stepfather_fam = subset(pdf, fam_str == 'stepf')
+# 
+# #foster families
+# foster_fam = subset(pdf, fam_str == 'foster')
+# 
+# # Models ------------------------------------------------------------------
+# #bivariate pooled OLS regression
+# 
+# ols_bi <- lm(fgrade ~ fam_str, data = df2)
+# summary(ols_bi)
+# 
+# #multivariate pooled OLS regression
+# 
+# ols_m1 <- lm(fgrade ~ fam_str + fam_income + gender + homesc + cognisc + emotisc, data = df2)
+# summary(ols_m1)
+# 
+# stargazer(ols_bi, ols_m1, type = 'text')
+# 
+# #IV estimation with 2SLS to treat the question of endogeneity
+# 
+# # -------------------------------------------------------------------------
+# # 2SLS involves estimating two regressions: In the first stage,
+# # the endogenous variable (log price in our example) is regressed
+# # on the instrument or instruments (tdiff), along with any other
+# # exogenous variables (controls). The estimated coefficients from
+# # the first-stage regression are used to predict the endogenous variable (log price).
+# # In the second stage, the dependent variable (log quantity) is regressed 
+# # on the predicted values of the endogenous variable (predicted log price), 
+# # along with the exogenous controls.
+# # -------------------------------------------------------------------------
+# 
+# 
+# 
+# 
+# 
+# 
