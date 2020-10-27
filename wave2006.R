@@ -37,7 +37,7 @@ df2 <- df %>% select(c(azon,
                         af011xxx,
                         af012xxx,
                         af013xxx,
-                        af020xxx, 
+                        af093xxx,
                         af095xxx,
                         af096xxx,
                         af069xxx,
@@ -89,8 +89,7 @@ df2 <- df %>% select(c(azon,
                         ad004axx,
                         ad004bxx,
                         af071xxx,
-                        af072xxx,
-                        af127axx))
+                        af072xxx))
 # Data cleaning -----------------------------------------------------------
 
 names(df2) <- c('ID',
@@ -105,7 +104,7 @@ names(df2) <- c('ID',
                 'age_at_sepf',
                 'fsep_reason',
                 'age_at_remm',
-                'citizenship',
+                'scgrade',
                 'same_school',
                 'rschange',
                 'othersc',
@@ -157,8 +156,7 @@ names(df2) <- c('ID',
                 'intfgrade',
                 'decfgrade',
                 'rep4',
-                'rep58',
-                'seceduc')
+                'rep58')
 
 # Removing labels and assigning NAs ---------------------------------------
 
@@ -219,6 +217,20 @@ df2$fam_str <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'tparent', #two-paren
 
 df2$fam_str2 <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'intact', 'nintact'))
 
+df2 %>% group_by(fam_str2) %>% summarize(fgrade = mean(fgrade, na.rm = TRUE))
+df2 %>% group_by(fam_str2) %>% summarize(math_comp = mean(math_comp, na.rm = TRUE))
+df2 %>% group_by(fam_str2) %>% summarize(read_comp = mean(read_comp, na.rm = TRUE))
+df2 %>% group_by(fam_str2) %>% summarize(math = mean(math, na.rm = TRUE))
+df2 %>% group_by(fam_str2) %>% summarize(gram = mean(gram, na.rm = TRUE))
+df2 %>% group_by(fam_str2) %>% summarize(liter = mean(liter, na.rm = TRUE))
+df2 %>% group_by(fam_str2) %>% summarize(behav = mean(behav, na.rm = TRUE))
+df2 %>% group_by(fam_str2) %>% summarize(dilig = mean(dilig, na.rm = TRUE))
+
+df2 %>% group_by(fam_str2) %>% summarize(fam_income = mean(fam_income, na.rm = TRUE))
+df2 %>% group_by(fam_str2) %>% summarize(homesc = mean(homesc, na.rm = TRUE))
+df2 %>% group_by(fam_str2) %>% summarize(cognisc = mean(cognisc, na.rm = TRUE))
+df2 %>% group_by(fam_str2) %>% summarize(emotisc = mean(emotisc, na.rm = TRUE))
+
 #factorizing
 # names <- c('msep_reason',
 #            'fsep_reason',
@@ -270,8 +282,9 @@ df2$fam_str2 <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'intact', 'nintact')
 
 glimpse(df2)
 
-df2sum <- df2 %>% remove_all_labels() %>% dfSummary(., plain.ascii = FALSE, style = "grid", 
-                                          graph.magnif = 0.75, valid.col = FALSE, tmp.img.dir = "/tmp") 
+df2sum <- df2[, !names(df2) %in% c('ID', 'mbio', 'fbio', 'mstep', 'fstep', 'age_at_remm', 'age_at_remf')] %>% 
+  remove_all_labels() %>% dfSummary(., plain.ascii = FALSE, style = "grid", 
+                                    graph.magnif = 0.75, valid.col = FALSE, tmp.img.dir = "/tmp") 
 
 df2sum$Missing <- NULL
 view(df2sum, file = "~/thesis_eletpalya/df2sum.html")
@@ -280,17 +293,27 @@ view(df2sum, file = "~/thesis_eletpalya/df2sum.html")
 
 ctable(df2$gender, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
 
-ctable(df2$same_school, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$rep4, df2$fam_str2, prop = "c", chisq = TRUE, OR = TRUE)
 
-ctable(df2$othersc, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
-
-ctable(df2$rep4, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
-
-ctable(df2$rep58, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$rep58, df2$fam_str2, prop = "c", chisq = TRUE, OR = TRUE)
 
 ctable(df2$seceduc, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
 
 ctable(df2$pind, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+
+ctable(df2$rschange1, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$rschange2, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$rschange3, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$rschange4, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+
+#for parental involvement
+ctable(df2$pmeet, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+
+ctable(df2$ptalk, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+
+ctable(df2$schooltalk, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+
+ctable(df2$studyparent, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
 
 # Correlation matrices ----------------------------------------------------
 
