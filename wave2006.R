@@ -1,5 +1,3 @@
-
-
 # NFO ---------------------------------------------------------------------
 
 #Életpálya 2006, 1. hullám
@@ -12,6 +10,7 @@ library(AER)
 library(haven)
 library(ggplot2)
 library(dplyr)
+library(plyr)
 library(data.table)
 library(plm)
 library(stargazer)
@@ -160,8 +159,6 @@ names(df2) <- c('ID',
 
 # Removing labels and assigning NAs ---------------------------------------
 
-get_labels(df2)
-
 concatFgrade <- function(df2){
   df2$fgrade <<- as.numeric(paste(df2$intfgrade, df2$decfgrade, sep = "."))
 }
@@ -217,70 +214,22 @@ df2$fam_str <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'tparent', #two-paren
 
 df2$fam_str2 <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'intact', 'nintact'))
 
-df2 %>% group_by(fam_str2) %>% summarize(fgrade = mean(fgrade, na.rm = TRUE))
-df2 %>% group_by(fam_str2) %>% summarize(math_comp = mean(math_comp, na.rm = TRUE))
-df2 %>% group_by(fam_str2) %>% summarize(read_comp = mean(read_comp, na.rm = TRUE))
-df2 %>% group_by(fam_str2) %>% summarize(math = mean(math, na.rm = TRUE))
-df2 %>% group_by(fam_str2) %>% summarize(gram = mean(gram, na.rm = TRUE))
-df2 %>% group_by(fam_str2) %>% summarize(liter = mean(liter, na.rm = TRUE))
-df2 %>% group_by(fam_str2) %>% summarize(behav = mean(behav, na.rm = TRUE))
-df2 %>% group_by(fam_str2) %>% summarize(dilig = mean(dilig, na.rm = TRUE))
+# Mean tables across family structures ------------------------------------
 
-df2 %>% group_by(fam_str2) %>% summarize(fam_income = mean(fam_income, na.rm = TRUE))
-df2 %>% group_by(fam_str2) %>% summarize(homesc = mean(homesc, na.rm = TRUE))
-df2 %>% group_by(fam_str2) %>% summarize(cognisc = mean(cognisc, na.rm = TRUE))
-df2 %>% group_by(fam_str2) %>% summarize(emotisc = mean(emotisc, na.rm = TRUE))
+mfinc <- aggregate(df2[, c('fam_income', 'mnsal', 'fnsal')],
+                   list(df2$fam_str2), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
-#factorizing
-# names <- c('msep_reason',
-#            'fsep_reason',
-#            'rschange',
-#            'rschange1',
-#            'rschange2',
-#            'rschange3',
-#            'rschange4',
-#            'pmeet',
-#            'pttalk',
-#            'schooltalk', 
-#            'studyparent',
-#            'peduc_asp',
-#            'housework',
-#            'flove',
-#            'mrel',
-#            'tsfather',
-#            'methnic',
-#            'fethnic',
-#            'wnbrh',
-#            'cnbrh',
-#            'mactivity',
-#            'factivity',
-#            'mdegree',
-#            'fdegree',
-#            'pind')
-# 
-# df2[, fct] <- as.factor(df2[, fct])
-# 
-# bool <- c('gender',
-#           'mbio',
-#           'mstep',
-#           'fbio',
-#           'fstep',
-#           'same_school',
-#           'othersc',
-#           'xtraclass',
-#           'workdesk',
-#           'comp',
-#           'internet',
-#           'mcrtaker',
-#           'ismother',
-#           'isfather',
-#           'fcrtaker')
-# 
-# df2[, bool] <- as.logical(df2[, bool])
+mgrades <- aggregate(df2[, c('fgrade', 'math_comp', 'read_comp', 'math', 'gram', 'liter', 'behav', 'dilig')],
+                        list(df2$fam_str2), function(x) c(round(mean(x, na.rm = TRUE), 2)))
+
+mscores <- aggregate(df2[, c('homesc', 'cognisc', 'emotisc')],
+                     list(df2$fam_str2), function(x) c(round(mean(x, na.rm = TRUE), 2)))
+
+write.table(mfinc, "~/thesis_eletpalya/mfinc.txt", sep="\t")
+write.table(mgrades, "~/thesis_eletpalya/mygrades.txt", sep="\t")
+write.table(mscores, "~/thesis_eletpalya/mscores.txt", sep="\t")
 
 # Descriptive summaries ----------------------------------------------------
-
-glimpse(df2)
 
 df2sum <- df2[, !names(df2) %in% c('ID', 'mbio', 'fbio', 'mstep', 'fstep', 'age_at_remm', 'age_at_remf')] %>% 
   remove_all_labels() %>% dfSummary(., plain.ascii = FALSE, style = "grid", 
@@ -290,32 +239,64 @@ df2sum$Missing <- NULL
 view(df2sum, file = "~/thesis_eletpalya/df2sum.html")
 
 # Cross tabulations -------------------------------------------------------
+msep <- ctable(df2$msep_reason, df2$fam_str2, prop = "c", chisq = TRUE)
+write.table(msep$proportions, "~/thesis_eletpalya/msep.txt", sep="\t")
 
-ctable(df2$gender, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+fsep <- ctable(df2$fsep_reason, df2$fam_str2, prop = "c", chisq = TRUE)
+write.table(fsep$proportions, "~/thesis_eletpalya/fsep.txt", sep="\t")
 
-ctable(df2$rep4, df2$fam_str2, prop = "c", chisq = TRUE, OR = TRUE)
+fam_str <- ctable( df2$fam_str, df2$fam_str2, prop = "c", chisq = TRUE)
+write.table(fam_str$proportions, "~/thesis_eletpalya/fam_str.txt", sep="\t")
 
-ctable(df2$rep58, df2$fam_str2, prop = "c", chisq = TRUE, OR = TRUE)
+gndr <- ctable(df2$gender, df2$fam_str2, prop = "c", chisq = TRUE)
+write.table(gndr$proportions, "~/thesis_eletpalya/gndr.txt", sep="\t")
 
-ctable(df2$seceduc, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+rep4 <- ctable(df2$rep4, df2$fam_str2, prop = "c", chisq = TRUE)
+write.table(rep4$proportions, "~/thesis_eletpalya/rep4.txt", sep="\t")
 
-ctable(df2$pind, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+rep58 <- ctable(df2$rep58, df2$fam_str2, prop = "c", chisq = TRUE)
+write.table(rep58$proportions, "~/thesis_eletpalya/rep58.txt", sep="\t")
 
-ctable(df2$rschange1, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$rschange2, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$rschange3, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
-ctable(df2$rschange4, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+#number of school changes due to moving
+df2_temp <- df2[, names(df2) %in% c('rschange1', 'rschange2', 'rschange3', 'rschange4')]
+df2_temp$nschange <- apply(df2_temp, 1, function(x) length(which(x == 2)))
+df2$nschange <- df2_temp$nschange
+
+#residential mobility
+resmob <- ctable(df2$nschange, df2$fam_str2, prop = "c", chisq = TRUE)
+write.table(resmob$cross_table, "~/thesis_eletpalya/resmobct.txt", sep="\t")
+write.table(resmob$proportions, "~/thesis_eletpalya/resmobpp.txt", sep="\t")
+
+#suspension and expel
+df2_temp$nexp <- apply(df2_temp, 1, function(x) length(which(x == 4)))
+df2$nexp <- df2_temp$nexp
+exp <- ctable(df2$nexp, df2$fam_str2, prop = "c", chisq = TRUE)
+write.table(exp$proportions, "~/thesis_eletpalya/exp.txt", sep="\t")
+
+#leaving because of weak performance (~ drop out)
+df2_temp$ndpout <- apply(df2_temp, 1, function(x) length(which(x == 5)))
+df2$ndpout <- df2_temp$ndpout
+dropout <- ctable(df2$ndpout, df2$fam_str2, prop = "c", chisq = TRUE)
+write.table(dropout$proportions, "~/thesis_eletpalya/dropout.txt", sep="\t")
 
 #for parental involvement
-ctable(df2$pmeet, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+ctable(df2$peduc_asp, df2$fam_str2, prop = "c", chisq = TRUE, OR = TRUE)
 
-ctable(df2$ptalk, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+#create index for parental involvement
+df2$pscinv <- df2$pmeet + df2$pttalk + df2$studyparent
+#the lower the better
+mpscinv <- aggregate(df2[, c("pscinv", "pmeet", "pttalk", "studyparent")],
+                   list(df2$fam_str2), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
-ctable(df2$schooltalk, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+write.table(mpscinv, "~/thesis_eletpalya/mpscinv.txt", sep="\t")
 
-ctable(df2$studyparent, df2$fam_str2, prop = "r", chisq = TRUE, OR = TRUE)
+# Plots -------------------------------------------------------------------
 
-# Correlation matrices ----------------------------------------------------
+ggplot(aes(fam_income, fgrade), data = df2) +
+  geom_point(aes(color = fam_str2))
+
+
+# Correlation matrices for feature selection----------------------------------------------------
 
 cormatdf <- df2[, c('fgrade',
                    'math_comp',
@@ -327,15 +308,12 @@ cormatdf <- df2[, c('fgrade',
                    'dilig',
                    'age_at_sepm',
                    'age_at_sepf',
-                   'age_at_remm',
-                   'age_at_remf',
                    'mnsal',
                    'fnsal',
-                   'nbooks',
                    'homesc',
-                   'cognisc',
-                   'emotisc',
-                   'fam_income')]
+                   'fam_income',
+                   'pscinv',
+                   'nschange')]
 
 cormat <- cormatdf %>% remove_all_labels() %>% cor(use = "complete.obs") %>% round(., 2)
 
