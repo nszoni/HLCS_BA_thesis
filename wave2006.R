@@ -187,9 +187,13 @@ mgrades <- aggregate(df2[, c('fgrade', 'math_comp', 'read_comp', 'math', 'gram',
 mscores <- aggregate(df2[, c('homesc', 'cognisc', 'emotisc')],
                      list(df2$fam_str2), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
+nbrh <- aggregate(df2[, c('wnbrh', 'cnbrh')],
+                     list(df2$fam_str2), function(x) c(round(mean(x, na.rm = TRUE), 2)))
+
 write.table(mfinc, "~/thesis_eletpalya/mfinc.txt", sep="\t")
 write.table(mgrades, "~/thesis_eletpalya/mygrades.txt", sep="\t")
 write.table(mscores, "~/thesis_eletpalya/mscores.txt", sep="\t")
+write.table(nbrh, "~/thesis_eletpalya/nbrh.txt", sep="\t")
 
 # Descriptive summaries ----------------------------------------------------
 
@@ -201,14 +205,15 @@ df2sum$Missing <- NULL
 view(df2sum, file = "~/thesis_eletpalya/df2sum.html")
 
 # Cross tabulations -------------------------------------------------------
-msep <- ctable(df2$msep_reason, df2$fam_str2, prop = "c", chisq = TRUE)
-write.table(msep$proportions, "~/thesis_eletpalya/msep.txt", sep="\t")
 
-fsep <- ctable(df2$fsep_reason, df2$fam_str2, prop = "c", chisq = TRUE)
-write.table(fsep$proportions, "~/thesis_eletpalya/fsep.txt", sep="\t")
+fam_str1 <- freq(df2$fam_str, report.nas = FALSE, 
+                 cumul = FALSE, headings = FALSE)
 
-fam_str <- ctable( df2$fam_str, df2$fam_str2, prop = "c", chisq = TRUE)
-write.table(fam_str$proportions, "~/thesis_eletpalya/fam_str.txt", sep="\t")
+fam_str2 <- freq(df2$fam_str2, report.nas = FALSE, 
+                 cumul = FALSE, headings = FALSE)
+
+write.table(fam_str1, "~/thesis_eletpalya/fam_str1.txt", sep="\t")
+write.table(fam_str2, "~/thesis_eletpalya/fam_str2.txt", sep="\t")
 
 gndr <- ctable(df2$gender, df2$fam_str2, prop = "c", chisq = TRUE)
 write.table(gndr$proportions, "~/thesis_eletpalya/gndr.txt", sep="\t")
@@ -258,6 +263,26 @@ df2_temp2$npinv <- apply(df2_temp2, 1, function(x) length(which(x == 2)))
 df2$npinv <- df2_temp2$npinv
 npinv <- ctable(df2$npinv, df2$fam_str2, prop = "c", chisq = TRUE)
 write.table(npinv$proportions, "~/thesis_eletpalya/npinv.txt", sep="\t")
+
+#minority backround (gypsy)
+df2$minor <- as.factor(ifelse((df2$fethnic == 7) | (df2$methnic == 7), 1, 0))
+minor <- freq(df2$minor, report.nas = FALSE, 
+              cumul = FALSE, headings = FALSE)
+write.table(minor, "~/thesis_eletpalya/minor.txt", sep="\t")
+
+#reason of separation
+df2$divordth <- as.factor(ifelse((df2$fam_str2 == 'nintact') & ((df2$msep_reason == 4) | (df2$fsep_reason == 4)), "div",
+                         ifelse((df2$fam_str2 == 'nintact') & ((df2$msep_reason == 6) | (df2$fsep_reason == 8)), "death",
+                         ifelse((df2$fam_str2 == 'intact'), NA, "other"))))
+
+divordth <- freq(df2$divordth, report.nas = FALSE, 
+                 cumul = FALSE, headings = FALSE)
+
+write.table(divordth, "~/thesis_eletpalya/divordth.txt", sep="\t")
+
+#separation age means
+sepage <- summary(df2[, c("age_at_sepm", "age_at_sepf")])
+write.table(sepage, "~/thesis_eletpalya/sepage.txt", sep="\t")
 
 # Correlation matrices for feature selection----------------------------------------------------
 
