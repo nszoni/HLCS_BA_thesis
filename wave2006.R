@@ -24,6 +24,8 @@ setwd(wd)
 
 df <- read_dta("eletpalya_a.dta")
 
+# Selecting variables -----------------------------------------------------
+
 df2 <- df %>% select(c(azon,
                         af002a01,
                         af006x01,
@@ -74,7 +76,6 @@ df2 <- df %>% select(c(azon,
                         ad004bxx,
                         af071xxx,
                         af072xxx))
-# Data cleaning -----------------------------------------------------------
 
 names(df2) <- c('ID',
                 'gender',
@@ -174,21 +175,50 @@ df2$fam_str <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'tparent', #two-paren
                          ifelse((fstep == 1) & (mbio %in% c(2, NA)) & (mstep %in% c(2, NA)), 'sffoster', #foster-single-father family
                          ifelse((fbio %in% c(2, NA)) & (mbio %in% c(2, NA)) & (mstep %in% c(2, NA)) & (fstep %in% c(2, NA)), 'alone', NA))))))))))) #does not live with anyone
 
-df2$fam_str2 <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'intact', 'nintact'))
+df2$intact <- as.factor(ifelse((fbio == 1) & (mbio == 1), 1, 0))
+
+#number of school changes due to moving
+df2_temp <- df2[, names(df2) %in% c('rschange1', 'rschange2', 'rschange3', 'rschange4')]
+df2_temp$nschange <- apply(df2_temp, 1, function(x) length(which(x == 2)))
+df2$nschange <- df2_temp$nschange
+
+#measure of expels
+df2_temp$nexp <- apply(df2_temp, 1, function(x) length(which(x == 4)))
+df2$nexp <- df2_temp$nexp
+
+#measure of dropouts
+df2_temp$ndpout <- apply(df2_temp, 1, function(x) length(which(x == 5)))
+df2$ndpout <- df2_temp$ndpout
+
+#create index for parental involvement
+df2$pscinv <- df2$pmeet + df2$pttalk + df2$studyparent
+
+# parental investments
+df2_temp2 <- df2_temp <- df2[, names(df2) %in% c('xtraclass', 'workdesk', 'comp', 'internet')]
+df2_temp2$npinv <- apply(df2_temp2, 1, function(x) length(which(x == 2)))
+df2$npinv <- df2_temp2$npinv
+
+#minority dummy
+df2$minor <- as.factor(ifelse((df2$fethnic == 7) | (df2$methnic == 7), 1, 0))
+
+#separation types
+df2$divordth <- as.factor(ifelse((df2$intact == 0) & ((df2$msep_reason == 4) | (df2$fsep_reason == 4)), 1, #divorce
+                                 ifelse((df2$intact == 0) & ((df2$msep_reason == 6) | (df2$fsep_reason == 8)), 2, #death
+                                        ifelse((df2$intact == 1), NA, 3)))) #other and NA
 
 # Mean tables across family structures ------------------------------------
 
 mfinc <- aggregate(df2[, c('fam_income', 'mnsal', 'fnsal')],
-                   list(df2$fam_str2), function(x) c(round(mean(x, na.rm = TRUE), 2)))
+                   list(df2$intact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
 mgrades <- aggregate(df2[, c('fgrade', 'math_comp', 'read_comp', 'math', 'gram', 'liter', 'behav', 'dilig')],
-                        list(df2$fam_str2), function(x) c(round(mean(x, na.rm = TRUE), 2)))
+                        list(df2$intact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
 mscores <- aggregate(df2[, c('homesc', 'cognisc', 'emotisc')],
-                     list(df2$fam_str2), function(x) c(round(mean(x, na.rm = TRUE), 2)))
+                     list(df2$intact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
 nbrh <- aggregate(df2[, c('wnbrh', 'cnbrh')],
-                     list(df2$fam_str2), function(x) c(round(mean(x, na.rm = TRUE), 2)))
+                     list(df2$intact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
 write.table(mfinc, "~/thesis_eletpalya/mfinc.txt", sep="\t")
 write.table(mgrades, "~/thesis_eletpalya/mygrades.txt", sep="\t")
@@ -209,72 +239,52 @@ view(df2sum, file = "~/thesis_eletpalya/df2sum.html")
 fam_str1 <- freq(df2$fam_str, report.nas = FALSE, 
                  cumul = FALSE, headings = FALSE)
 
-fam_str2 <- freq(df2$fam_str2, report.nas = FALSE, 
+intact <- freq(df2$intact, report.nas = FALSE, 
                  cumul = FALSE, headings = FALSE)
 
 write.table(fam_str1, "~/thesis_eletpalya/fam_str1.txt", sep="\t")
-write.table(fam_str2, "~/thesis_eletpalya/fam_str2.txt", sep="\t")
+write.table(intact, "~/thesis_eletpalya/intact.txt", sep="\t")
 
-gndr <- ctable(df2$gender, df2$fam_str2, prop = "c", chisq = TRUE)
+gndr <- ctable(df2$gender, df2$intact, prop = "c", chisq = TRUE)
 write.table(gndr$proportions, "~/thesis_eletpalya/gndr.txt", sep="\t")
 
-rep4 <- ctable(df2$rep4, df2$fam_str2, prop = "c", chisq = TRUE)
+rep4 <- ctable(df2$rep4, df2$intact, prop = "c", chisq = TRUE)
 write.table(rep4$proportions, "~/thesis_eletpalya/rep4.txt", sep="\t")
 
-rep58 <- ctable(df2$rep58, df2$fam_str2, prop = "c", chisq = TRUE)
+rep58 <- ctable(df2$rep58, df2$intact, prop = "c", chisq = TRUE)
 write.table(rep58$proportions, "~/thesis_eletpalya/rep58.txt", sep="\t")
 
-#number of school changes due to moving
-df2_temp <- df2[, names(df2) %in% c('rschange1', 'rschange2', 'rschange3', 'rschange4')]
-df2_temp$nschange <- apply(df2_temp, 1, function(x) length(which(x == 2)))
-df2$nschange <- df2_temp$nschange
-
 #residential mobility
-resmob <- ctable(df2$nschange, df2$fam_str2, prop = "c", chisq = TRUE)
-write.table(resmob$cross_table, "~/thesis_eletpalya/resmobct.txt", sep="\t")
+resmob <- ctable(df2$nschange, df2$intact, prop = "c", chisq = TRUE)
 write.table(resmob$proportions, "~/thesis_eletpalya/resmobpp.txt", sep="\t")
 
 #suspension and expel
-df2_temp$nexp <- apply(df2_temp, 1, function(x) length(which(x == 4)))
-df2$nexp <- df2_temp$nexp
-exp <- ctable(df2$nexp, df2$fam_str2, prop = "c", chisq = TRUE)
+exp <- ctable(df2$nexp, df2$intact, prop = "c", chisq = TRUE)
 write.table(exp$proportions, "~/thesis_eletpalya/exp.txt", sep="\t")
 
 #leaving because of weak performance (~ drop out)
-df2_temp$ndpout <- apply(df2_temp, 1, function(x) length(which(x == 5)))
-df2$ndpout <- df2_temp$ndpout
-dropout <- ctable(df2$ndpout, df2$fam_str2, prop = "c", chisq = TRUE)
+dropout <- ctable(df2$ndpout, df2$intact, prop = "c", chisq = TRUE)
 write.table(dropout$proportions, "~/thesis_eletpalya/dropout.txt", sep="\t")
 
 #for parental involvement
-ctable(df2$peduc_asp, df2$fam_str2, prop = "c", chisq = TRUE, OR = TRUE)
+ctable(df2$peduc_asp, df2$intact, prop = "c", chisq = TRUE, OR = TRUE)
 
-#create index for parental involvement
-df2$pscinv <- df2$pmeet + df2$pttalk + df2$studyparent
 #the lower the better
 mpscinv <- aggregate(df2[, c("pscinv", "pmeet", "pttalk", "studyparent")],
-                   list(df2$fam_str2), function(x) c(round(mean(x, na.rm = TRUE), 2)))
+                   list(df2$intact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
 write.table(mpscinv, "~/thesis_eletpalya/mpscinv.txt", sep="\t")
 
 #additional parental investments not in home scale
-df2_temp2 <- df2_temp <- df2[, names(df2) %in% c('xtraclass', 'workdesk', 'comp', 'internet')]
-df2_temp2$npinv <- apply(df2_temp2, 1, function(x) length(which(x == 2)))
-df2$npinv <- df2_temp2$npinv
-npinv <- ctable(df2$npinv, df2$fam_str2, prop = "c", chisq = TRUE)
+npinv <- ctable(df2$npinv, df2$intact, prop = "c", chisq = TRUE)
 write.table(npinv$proportions, "~/thesis_eletpalya/npinv.txt", sep="\t")
 
 #minority backround (gypsy)
-df2$minor <- as.factor(ifelse((df2$fethnic == 7) | (df2$methnic == 7), 1, 0))
 minor <- freq(df2$minor, report.nas = FALSE, 
               cumul = FALSE, headings = FALSE)
 write.table(minor, "~/thesis_eletpalya/minor.txt", sep="\t")
 
 #reason of separation
-df2$divordth <- as.factor(ifelse((df2$fam_str2 == 'nintact') & ((df2$msep_reason == 4) | (df2$fsep_reason == 4)), "div",
-                         ifelse((df2$fam_str2 == 'nintact') & ((df2$msep_reason == 6) | (df2$fsep_reason == 8)), "death",
-                         ifelse((df2$fam_str2 == 'intact'), NA, "other"))))
-
 divordth <- freq(df2$divordth, report.nas = FALSE, 
                  cumul = FALSE, headings = FALSE)
 
@@ -286,22 +296,14 @@ write.table(sepage, "~/thesis_eletpalya/sepage.txt", sep="\t")
 
 # Correlation matrices for feature selection----------------------------------------------------
 
-cormatdf <- df2[, c('fgrade',
-                   'math_comp',
-                   'read_comp',
-                   'math',
-                   'gram',
-                   'liter',
-                   'behav',
-                   'dilig',
-                   'age_at_sepm',
-                   'age_at_sepf',
-                   'mnsal',
-                   'fnsal',
-                   'homesc',
-                   'fam_income',
-                   'pscinv',
-                   'nschange')]
+cormatdf <- df2[, c('gender',
+                    'mnsal',
+                    'fnsal',
+                    'homesc',
+                    'pscinv',
+                    'npinv',
+                    'nschange',
+                    'age_at_sepf')]
 
 cormat <- cormatdf %>% remove_all_labels() %>% cor(use = "complete.obs") %>% round(., 2)
 
@@ -326,6 +328,7 @@ lower_tri <- get_lower_tri(cormat)
 # Melt the correlation matrix
 melted_cormat <- melt(lower_tri, na.rm = TRUE)
 
+tiff("test.tiff", units="in", width=5, height=5, res=300)
 # Create a ggheatmap
 ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value)) +
   geom_tile(color = "white") +
@@ -351,97 +354,36 @@ ggheatmap +
     legend.direction = "horizontal")+
   guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
                                title.position = "top", title.hjust = 0.5)) +
-  labs(title = "Correlation heatmap between the non-categorial variables",
-       subtitle = "ordered according to hclust")
-  
+  labs(title = "Correlation heatmap of control variables",
+       subtitle = "Observing anomalies in feature selection")
+
+dev.off()
 # Creating panel df -------------------------------------------------------
 
 # pdf <- pdata.frame(df2, index <- c("azon", "hullam")) #cross sectional and wave dimensions
 # pdim(pdf)
-# 
-# # Treating dependent variables---------------------------------------------------------
-# 
-# #those with final grades
-# final_grade = subset(pdf, (fgrade <= 5.0 & !is.na(fgrade)))
-# 
-# #those with math grade
-# math_grade = subset(pdf, (math <= 5.0 & !is.na(math)))
-# 
-# #with grammar grade
-# gram_grade = subset(pdf, (gram <= 5.0 & !is.na(gram)))
-# 
-# #with  literature grade
-# liter_grade = subset(pdf, (liter <= 5.0 & !is.na(liter)))
-# 
-# #with behavior grade
-# behav_grade = subset(pdf, (behav <= 5.0 & !is.na(behav)))
-# 
-# #with diligence grade
-# behav_grade = subset(pdf, (dilig <= 5.0 & !is.na(dilig)))
-# 
-# #with math competence test score
-# math_ctest = subset(pdf, !is.na(math_comp))
-# 
-# #with reading competence test score
-# math_ctest = subset(pdf, !is.na(read_comp))
-# 
-# #repeated school before 4th grade (dummy)
-# rep_4 = subset(pdf, !is.na(rep4))
-# 
-# #repeated school between 5th and 8th (dummy)
-# rep_5to8 = subset(pdf, !is.na(rep58))
-# 
-# #wants to study further (dummy)
-# study_further = subset(pdf, seceduc %in% c(1,2,3))
-# 
-# # Filtered panels ------------------------------------------
-# 
-# #two-parent biological families
-# two_p_fam = subset(pdf, fam_str = 'tparent')
-# 
-# #father only families
-# father_o_fam = subset(pdf, fam_str == 'singlef')
-# 
-# #mother only families
-# mother_o_fam = subset(pdf, fam_str == 'singlem')
-# 
-# #stepmother families
-# stepmother_fam = subset(pdf, fam_str == 'stepm')
-# 
-# #stepfather families
-# stepfather_fam = subset(pdf, fam_str == 'stepf')
-# 
-# #foster families
-# foster_fam = subset(pdf, fam_str == 'foster')
-# 
-# # Models ------------------------------------------------------------------
-# #bivariate pooled OLS regression
-# 
-# ols_bi <- lm(fgrade ~ fam_str, data = df2)
-# summary(ols_bi)
-# 
-# #multivariate pooled OLS regression
-# 
-# ols_m1 <- lm(fgrade ~ fam_str + fam_income + gender + homesc + cognisc + emotisc, data = df2)
-# summary(ols_m1)
-# 
-# stargazer(ols_bi, ols_m1, type = 'text')
-# 
-# #IV estimation with 2SLS to treat the question of endogeneity
-# 
-# # -------------------------------------------------------------------------
-# # 2SLS involves estimating two regressions: In the first stage,
-# # the endogenous variable (log price in our example) is regressed
-# # on the instrument or instruments (tdiff), along with any other
-# # exogenous variables (controls). The estimated coefficients from
-# # the first-stage regression are used to predict the endogenous variable (log price).
-# # In the second stage, the dependent variable (log quantity) is regressed 
-# # on the predicted values of the endogenous variable (predicted log price), 
-# # along with the exogenous controls.
-# # -------------------------------------------------------------------------
-# 
-# 
-# 
-# 
-# 
-# 
+
+# Models ------------------------------------------------------------------
+
+#bivariate pooled OLS regression
+ 
+ols_bi <- lm(fgrade ~ intact, data = df2)
+ 
+#multivariate pooled OLS regression for final grade
+#sepage and divordeath is not representative (too much NAs)
+
+ols_m1 <- lm(fgrade ~ intact + mnsal + fnsal + gender + homesc + pscinv + npinv + nschange, data = df2)
+
+#given that it is a intact (non-intact) family
+nintact <- subset(df2, intact == 0)
+intact <- subset(df2, intact == 1)
+
+#ols for disrupted families
+ols_m2 <- lm(fgrade ~ mnsal + fnsal + gender + homesc + pscinv + npinv + nschange, data = intact)
+ols_m3 <- lm(fgrade ~ mnsal + fnsal + gender + homesc + pscinv + npinv + nschange + divordth + age_at_sepf, data = nintact)
+
+stargazer(ols_bi, ols_m1, ols_m2, ols_m3, type = 'text')
+
+#diff in diff models
+
+
