@@ -402,7 +402,8 @@ df2008 <- df2008[,!(names(df2008) %in% c("intfgrade", "decfgrade"))]
 df2006[df2006 == -6 | df2006 == 99 | df2006 == 999 | df2006 == 9999] <- NA
 df2006$fgrade[df2006$fgrade > 5] <- NA
 
-df2006[,!names(df2006) %in% c("age_at_sepf",
+recodeMissing <- function(df){
+  df[,!names(df) %in% c("age_at_sepf",
                         "age_at_sepm",
                         "age_at_remf",
                         "age_at_remm",
@@ -421,11 +422,14 @@ df2006[,!names(df2006) %in% c("age_at_sepf",
                                                                "fsep_reason",
                                                                "mdegree",
                                                                "fdegree")] == 9 ] <- NA
+}
 
-attach(df2006)
+recodeMissing(df2006)
+recodeMissing(df2007)
+recodeMissing(df2008)
 
 #Creating categorical variable for family structure
-
+attach(df2006)
 df2006$fam_str <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'tparent', #two-parent family
                          ifelse((fbio == 1) & (mbio %in% c(2, NA)) & (mstep %in% c(2, NA)), 'singlef', #single-father family
                          ifelse((mbio == 1) & (fbio %in% c(2, NA)) & (fstep %in% c(2, NA)), 'singlem', #single-mother family
@@ -438,6 +442,10 @@ df2006$fam_str <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'tparent', #two-pa
                          ifelse((fbio %in% c(2, NA)) & (mbio %in% c(2, NA)) & (mstep %in% c(2, NA)) & (fstep %in% c(2, NA)), 'alone', NA))))))))))) #does not live with anyone
 
 df2006$intact <- as.factor(ifelse((fbio == 1) & (mbio == 1), 1, 0))
+detach(df2006)
+
+df2007$intact <- as.factor(ifelse((df2007$fbio == 1) & (df2007$mbio == 1), 1, 0))
+df2008$intact <- as.factor(ifelse((df2008$fbio == 1) & (df2008$mbio == 1), 1, 0))
 
 #number of school changes due to moving
 df2006_temp <- df2006[, names(df2006) %in% c('rschange1', 'rschange2', 'rschange3', 'rschange4')]
@@ -454,14 +462,21 @@ df2006$ndpout <- df2006_temp$ndpout
 
 #create index for parental involvement
 df2006$pscinv <- df2006$pmeet + df2006$pttalk + df2006$studyparent
+df2007$pscinv <- df2007$pmeet + df2007$pttalk
+df2008$pscinv <- df2008$pmeet + df2008$pttalk
 
 # parental investments
-df2006_temp2 <- df2006_temp <- df2006[, names(df2006) %in% c('xtraclass', 'workdesk', 'comp', 'internet')]
-df2006_temp2$npinv <- apply(df2006_temp2, 1, function(x) length(which(x == 2)))
-df2006$npinv <- df2006_temp2$npinv
+pInv <- function(df){
+  df$pinv <- df$txtbook + df$transc + df$xtraclass + df$sctrip
+}
+
+pInv(df2006)
+pInv(df2007)
+pInv(df2008)
 
 #minority dummy
 df2006$minor <- as.factor(ifelse((df2006$fethnic == 7) | (df2006$methnic == 7), 1, 0))
+df2007$minor <- ifelse(df$minor == 7, 1, 0) #boolean for gypsy
 
 #separation types
 df2006$divordth <- as.factor(ifelse((df2006$intact == 0) & ((df2006$msep_reason == 4) | (df2006$fsep_reason == 4)), 1, #divorce
@@ -470,7 +485,7 @@ df2006$divordth <- as.factor(ifelse((df2006$intact == 0) & ((df2006$msep_reason 
 
 # Mean tables across family structures ------------------------------------
 
-mfinc <- aggregate(df2006[, c('fam_income', 'mnsal', 'fnsal')],
+mfinc <- aggregate(df2006[, c('pcons', 'mnsal', 'fnsal')],
                    list(df2006$intact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
 mgrades <- aggregate(df2006[, c('fgrade', 'math_comp', 'read_comp', 'math', 'gram', 'liter', 'behav', 'dilig')],
@@ -538,8 +553,8 @@ mpscinv <- aggregate(df2006[, c("pscinv", "pmeet", "pttalk", "studyparent")],
 write.table(mpscinv, "~/thesis_eletpalya/mpscinv.txt", sep="\t")
 
 #additional parental investments not in home scale
-npinv <- ctable(df2006$npinv, df2006$intact, prop = "c", chisq = TRUE)
-write.table(npinv$proportions, "~/thesis_eletpalya/npinv.txt", sep="\t")
+pinv <- ctable(df2006$pinv, df2006$intact, prop = "c", chisq = TRUE)
+write.table(pinv$proportions, "~/thesis_eletpalya/pinv.txt", sep="\t")
 
 #minority backround (gypsy)
 minor <- freq(df2006$minor, report.nas = FALSE, 
@@ -573,7 +588,7 @@ cormatdf <- df2006[, c('gender',
                     'fnsal',
                     'homesc',
                     'pscinv',
-                    'npinv',
+                    'pinv',
                     'nschange',
                     'age_at_sepf')]
 
@@ -596,19 +611,20 @@ ols_bi <- lm(fgrade ~ intact, data = df2006)
 #multivariate pooled OLS regression for final grade
 #sepage and divordeath is not representative (too much NAs)
 
-ols_m1 <- lm(fgrade ~ intact + mnsal + fnsal + gender + homesc + pscinv + npinv + nschange, data = df2006)
+ols_m1 <- lm(fgrade ~ intact + mnsal + fnsal + gender + homesc + pscinv + pinv + nschange, data = df2006)
 
 #given that it is a intact (non-intact) family
 nintact <- subset(df2006, intact == 0)
 intact <- subset(df2006, intact == 1)
 
 #ols for disrupted families
-ols_m2 <- lm(fgrade ~ mnsal + fnsal + gender + homesc + pscinv + npinv + nschange, data = intact)
-ols_m3 <- lm(fgrade ~ mnsal + fnsal + gender + homesc + pscinv + npinv + nschange + divordth + age_at_sepf, data = nintact)
+ols_m2 <- lm(fgrade ~ mnsal + fnsal + gender + homesc + pscinv + pinv + nschange, data = intact)
+ols_m3 <- lm(fgrade ~ mnsal + fnsal + gender + homesc + pscinv + pinv + nschange + divordth + age_at_sepf, data = nintact)
 
 stargazer(ols_bi, ols_m1, ols_m2, ols_m3, type = 'text')
 
 #diff in diff models
+pdf <- pdata.frame(df_total, index = c('azon', 'year'))
 
 ###################
 #   END OF CODE   #
