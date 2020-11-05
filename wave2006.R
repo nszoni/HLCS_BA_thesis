@@ -383,7 +383,8 @@ names(df2008) <- c('year',
                    'sclass',
                    'sclassr')
 
-#Creating categorical variable for family structure
+# Detailed family structure -----------------------------------------------
+
 attach(df2006)
 df2006$fam_str <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'tparent', #two-parent family
                          ifelse((fbio == 1) & (mbio %in% c(2, NA)) & (mstep %in% c(2, NA)), 'singlef', #single-father family
@@ -395,6 +396,10 @@ df2006$fam_str <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'tparent', #two-pa
                          ifelse((mstep == 1) & (fbio %in% c(2, NA)) & (fstep %in% c(2, NA)), 'smfoster', #foster-single-mother family
                          ifelse((fstep == 1) & (mbio %in% c(2, NA)) & (mstep %in% c(2, NA)), 'sffoster', #foster-single-father family
                          ifelse((fbio %in% c(2, NA)) & (mbio %in% c(2, NA)) & (mstep %in% c(2, NA)) & (fstep %in% c(2, NA)), 'alone', NA))))))))))) #does not live with anyone
+
+detach(df2006)
+
+# Unifying differences before union -----------------------------------------
 
 #number of school changes due to moving before 2006
 df2006_temp <- df2006[, names(df2006) %in% c('rschange1', 'rschange2', 'rschange3', 'rschange4')]
@@ -434,11 +439,6 @@ df2006 <- merge(df2006, df2007[,c("ID", "minor")], by = "ID")
 df2008 <- merge(df2008, df2007[,c("ID", "minor")], by = "ID")
 df2007 <- merge(df2007, df2006[,c("ID", "sex")], by = "ID")
 df2008 <- merge(df2008, df2006[,c("ID", "sex")], by = "ID")
-
-#create age column
-df2006$age <- df2006$year - df2006$byear
-df2007$age <- df2007$year - df2007$byear
-df2008$age <- df2008$year - df2008$byear
 
 #separation types
 df2006$divordth <- as.factor(ifelse(((df2006$msep_reason == 4) | (df2006$fsep_reason == 4)), 1, #divorce
@@ -546,7 +546,7 @@ write.table(sepage, "~/thesis_eletpalya/sepage.txt", sep="\t")
 
 vars <- c("ID",
           "year",
-          "age",
+          "byear",
           "minor",
           "full",
           "grade",
@@ -587,7 +587,10 @@ dftotal <- rbind(df2006[, vars],
                  df2007[, vars],
                  df2008[, vars])
 
-# Merge grade decimals ---------------------------------------
+
+# EDA ---------------------------------------------------------------------
+
+#Merge grade decimals
 
 concatFgrade <- function(dftotal, fgrade, intfgrade, decfgrade){
   dftotal$fgrade <- as.numeric(paste(dftotal$intfgrade, dftotal$decfgrade, sep = "."))
@@ -596,7 +599,7 @@ concatFgrade <- function(dftotal, fgrade, intfgrade, decfgrade){
 dftotal$fgrade <- concatFgrade(dftotal, "fgrade", "infgrade", "decfgrade")
 dftotal <- dftotal[,!(names(dftotal) %in% c("intfgrade", "decfgrade"))]
 
-# Replace missing values with NA ------------------------------------------
+#Replace missing values with NA
 
 dftotal[dftotal == -6 | dftotal == 99 | dftotal == 88 | dftotal == 999 | dftotal == 9999] <- NA
 dftotal$fgrade[dftotal$fgrade > 5] <- NA
@@ -621,10 +624,10 @@ dftotal[,!names(dftotal) %in% c("grade",
                                                                             "fdegree",
                                                                             "rfaminc")] == 9 ] <- NA
 
+#create age column
+dftotal$age <- dftotal$year - dftotal$byear
 
-
-# Family structure dummy --------------------------------------------------
-
+# Family structure dummy
 dftotal$intact <- as.factor(ifelse((dftotal$fbio == 1) & (dftotal$mbio == 1), 1, 0))
 
 #measure of dropouts as studied or not
