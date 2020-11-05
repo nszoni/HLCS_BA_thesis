@@ -21,6 +21,8 @@ library(reshape2)
 library(Hmisc)
 library(corrplot)
 library(caret)
+library(foreign)
+library(lmtest)
 
 wd <- file.path("~", "thesis_eletpalya", "kesz")
 setwd(wd)
@@ -141,7 +143,7 @@ names(df2006) <- c('year',
                 'emotisc',
                 'mdegree',
                 'fdegree',
-                'nsibling',
+                'nsib',
                 'pcons',
                 'math_comp',
                 'read_comp',
@@ -253,7 +255,7 @@ names(df2007) <- c('year',
                    'internet',
                    'mdegree',
                    'fdegree',
-                   'nsibling',
+                   'nsib',
                    'pcons',
                    'minor',
                    'movedly',
@@ -364,7 +366,7 @@ names(df2008) <- c('year',
                    'internet',
                    'mdegree',
                    'fdegree',
-                   'nsibling',
+                   'nsib',
                    'pcons',
                    'faminc',
                    'rfaminc',
@@ -568,7 +570,7 @@ vars <- c("ID",
           "internet",
           "mdegree",
           "fdegree",
-          "nsibling",
+          "nsib",
           "pcons",
           'math',
           'gram',
@@ -697,6 +699,23 @@ ols_m3 <- lm(fgrade ~ mnsal + fnsal + gender + pscinv + pinv + schange + divordt
 stargazer(ols_bi, ols_m1, ols_m2, ols_m3, type = 'text')
 
 #diff in diff models
+coef(lm(fgrade ~ intact, data = dftotal, subset=(year==2006)))
+coef(lm(fgrade ~ intact, data = dftotal, subset=(year==2007)))
+coef(lm(fgrade ~ intact, data = dftotal, subset=(year==2008)))
+
+#subset 2007 and 2008 and create year dummy
+dftotal2 <- subset(dftotal, (year == 2007 | year == 2008))
+dftotal2$y08 <- ifelse(year == 2008, 1, 0)
+
+coeftest(lm(fgrade ~ intact*y08, data = dftotal2))
+
+did <- lm(fgrade ~ intact*y08, data = dftotal2)
+didc <- lm(fgrade ~ intact*y08 + log(pcons) + age + I(age^2) + log(pinv) + pscinv + sex + factor(minor) + factor(mdegree) + factor(fdegree), data = dftotal2)
+
+stargazer(did, didc, type = "text")
+
+#placebo test with fake treatment
+
 
 ###################
 #   END OF CODE   #
