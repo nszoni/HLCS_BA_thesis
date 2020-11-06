@@ -6,23 +6,17 @@
 
 # Setup -------------------------------------------------------------------
 
-library(AER)
-library(haven)
-library(ggplot2)
-library(dplyr)
-library(plyr)
-library(data.table)
-library(plm)
-library(stargazer)
-library(labelled)
-library(sjlabelled)
-library(summarytools)
-library(reshape2)
-library(Hmisc)
-library(corrplot)
-library(caret)
-library(foreign)
-library(lmtest)
+#install packages
+if (!require("pacman")) {
+  install.packages("pacman")
+}
+
+pacman::p_load(AER, haven, ggplot2, dplyr, 
+               plyr, data.table, plm,
+               stargazer, labelled, sjlabelled,
+               summarytools, reshape2, Hmisc,
+               corrplot, caret, foreign, lmtest,
+               broom, knitr)
 
 wd <- file.path("~", "thesis_eletpalya", "kesz")
 setwd(wd)
@@ -439,8 +433,9 @@ df2007$xp <- ifelse((df2007$xpmiss == 1 |
 #merging time invariant variables such as ethnicity and sex
 df2006 <- merge(df2006, df2007[,c("ID", "minor")], by = "ID")
 df2008 <- merge(df2008, df2007[,c("ID", "minor")], by = "ID")
-df2007 <- merge(df2007, df2006[,c("ID", "sex")], by = "ID")
-df2008 <- merge(df2008, df2006[,c("ID", "sex")], by = "ID")
+df2006$male <- ifelse(df2006$sex == 1, 1, 0)
+df2007 <- merge(df2007, df2006[,c("ID", "male")], by = "ID")
+df2008 <- merge(df2008, df2006[,c("ID", "male")], by = "ID")
 
 #separation types
 df2006$divordth <- as.factor(ifelse(((df2006$msep_reason == 4) | (df2006$fsep_reason == 4)), 1, #divorce
@@ -550,6 +545,7 @@ vars <- c("ID",
           "year",
           "byear",
           "minor",
+          "male",
           "full",
           "grade",
           "mbio",
@@ -589,7 +585,6 @@ dftotal <- rbind(df2006[, vars],
                  df2007[, vars],
                  df2008[, vars])
 
-
 # EDA ---------------------------------------------------------------------
 
 #Merge grade decimals
@@ -604,7 +599,7 @@ dftotal <- dftotal[,!(names(dftotal) %in% c("intfgrade", "decfgrade"))]
 #Replace missing values with NA
 
 dftotal[dftotal == -6 | dftotal == 99 | dftotal == 88 | dftotal == 999 | dftotal == 9999] <- NA
-dftotal$fgrade[dftotal$fgrade > 5] <- NA
+dftotal$fgrade[dftotal$fgrade > 5 | dftotal$fgrade < 1] <- NA
 dftotal[,!names(dftotal) %in% c("grade",
                                 "age_at_sepf",
                                 "age_at_sepm",
@@ -630,7 +625,7 @@ dftotal[,!names(dftotal) %in% c("grade",
 dftotal$age <- dftotal$year - dftotal$byear
 
 # Family structure dummy
-dftotal$intact <- as.factor(ifelse((dftotal$fbio == 1) & (dftotal$mbio == 1), 1, 0))
+dftotal$nintact <- as.factor(ifelse((dftotal$fbio == 1) & (dftotal$mbio == 1), 0, 1))
 
 #measure of dropouts as studied or not
 dftotal$study <- ifelse(dftotal$full == 5, 0, 1)
@@ -674,19 +669,19 @@ print(findCorrelation(cor, cutoff = 0.5))
 
 # Models ------------------------------------------------------------------
 
-#create and rebalance panel dframe
-pdf <- pdata.frame(dftotal, index <- c("ID", "year")) #cross sectional and wave dimensions
-pdf <- make.pbalanced(pdf, balance.type = "shared.individuals")
-pdim(pdf)
+#create and rebalance panel dframe (DiD does not need a panel data, only repeated cross section data)
+# pdf <- pdata.frame(dftotal, index <- c("ID", "year")) #cross sectional and wave dimensions
+# pdf <- make.pbalanced(pdf, balance.type = "shared.individuals")
+# pdim(pdf)
 
 #bivariate pooled OLS regression
  
-ols_bi <- lm(fgrade ~ intact, data = pdf)
+ols_bi <- lm(fgrade ~ intact, data = dftotal)
  
 #multivariate pooled OLS regression for final grade
 #sepage and divordeath is not representative (too much NAs)
 
-ols_m1 <- lm(fgrade ~ intact + mnsal + fnsal + gender + pscinv + pinv + schange, data = pdf)
+ols_m1 <- lm(fgrade ~ intact + mnsal + fnsal + gender + pscinv + pinv + schange, data = dftotal)
 
 #given that it is a intact (non-intact) family
 nintact <- subset(dftotal, intact == 0)
@@ -705,17 +700,77 @@ coef(lm(fgrade ~ intact, data = dftotal, subset=(year==2008)))
 
 #subset 2007 and 2008 and create year dummy
 dftotal2 <- subset(dftotal, (year == 2007 | year == 2008))
-dftotal2$y08 <- ifelse(year == 2008, 1, 0)
+dftotal2$y08 <- ifelse(dftotal2$year == 2008, 1, 0)
 
 coeftest(lm(fgrade ~ intact*y08, data = dftotal2))
 
-did <- lm(fgrade ~ intact*y08, data = dftotal2)
-didc <- lm(fgrade ~ intact*y08 + log(pcons) + age + I(age^2) + log(pinv) + pscinv + sex + factor(minor) + factor(mdegree) + factor(fdegree), data = dftotal2)
+mod1 <- lm(fgrade ~ nintact*y08, data = dftotal2)
+mod2 <- lm(fgrade ~ nintact*y08 + log(pcons) + age + I(age^2) + pinv + pscinv + male + factor(minor) + factor(mdegree) + factor(fdegree), data = dftotal2)
 
-stargazer(did, didc, type = "text")
+stargazer(mod1, mod2, type = 'text',
+          title="DiD of the parental separation on academic performance",
+          header=FALSE, digits=2)
 
-#placebo test with fake treatment
+#plot of counterfactual
 
+b1 <- coef(mod1)[[1]]
+b2 <- coef(mod1)[["nintact1"]]
+b3 <- coef(mod1)[["y08"]]
+delta <- coef(mod1)[["nintact1:y08"]]
+C <- b1+b2+b3+delta
+E <- b1+b3
+B <- b1+b2
+A <- b1
+D <- E+(B-A)
+
+plot(1, type="n", main = "Estimated impact of parental separation", xlab="Period", ylab="Final Grade", xaxt="n",
+     xlim=c(-0.01, 1.01), ylim=c(3.42, 3.65))
+segments(x0=0, y0=A, x1=1, y1=E, lty=1, col=2)#control
+segments(x0=0, y0=B, x1=1, y1=C, lty=3, col=3)#treated
+segments(x0=0, y0=B, x1=1, y1=D,      #counterfactual
+         lty=4, col=4)
+legend("center", legend=c("control", "treated", 
+                            "counterfactual"), lty=c(1,3,4), col=c(2,3,4), cex = 0.75)
+axis(side=1, at=c(0,1), labels=NULL)
+
+plot(1, log="y")
+
+#Hypothesis testing
+#kable(anova(mod1, mod2), 
+#      caption="Chow test for the 'intact' equation")
+
+#Model selection criteria
+r1 <- as.numeric(glance(mod1))
+r2 <- as.numeric(glance(mod2))
+tab <- data.frame(rbind(r1, r2))[,c(1,2,8,9)]
+row.names(tab) <- c("nintact","nintact + controls")
+kable(tab, 
+      caption="Model comparison, 'nintact' ", digits=4, 
+      col.names=c("Rsq","AdjRsq","AIC","BIC"))
+
+#VIF (variance inflation factor) test for collinearity
+tab <- tidy(vif(mod2)[, c(1)])
+kable(tab, 
+      caption="Variance inflation factors for the 'mpg' regression model",
+      col.names=c("regressor", "VIF"))
+#we need to drop the age variable
+
+#Heteroskedasticity of error terms w/ Breusch-Pagan test
+kable(tidy(bptest(mod2)), 
+      caption="Breusch-Pagan heteroskedasticity test")
+#we can reject the homoskedasticity
+
+#Robustness checks
+# Lags and Leads: If D causes Y then current and lagged values should have an effect on Y,
+# but future values of D should not.
+# 
+# Placebo permutation test: Randomly assign the intervention(s) to create the sampling distribution of the null hypothesis.
+# 
+# Use different comparison groups. Different groups should have the same affect.
+# 
+# Use an outcome variable that you know is not affected by the intervention. If DiD estimates not zero, then there is some other difference between groups.
+
+#Serial correlation
 
 ###################
 #   END OF CODE   #
