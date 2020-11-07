@@ -633,8 +633,11 @@ dftotal$study <- ifelse(dftotal$full == 5, 0, 1)
 #create index for parental school involvement
 dftotal$pscinv <- dftotal$pmeet + dftotal$pttalk
 
-# parental investments
+#parental investments
 dftotal$pinv <- dftotal$txtbook + dftotal$transc + dftotal$xtraclass + dftotal$sctrip
+
+#treating gypsy as minor (dummy)
+dftotal$minor <- ifelse(dftotal$minor == 7, 1, 0)
 
 # Feature selection----------------------------------------------------
 
@@ -705,12 +708,55 @@ dftotal2$y08 <- ifelse(dftotal2$year == 2008, 1, 0)
 coeftest(lm(fgrade ~ intact*y08, data = dftotal2))
 
 mod1 <- lm(fgrade ~ nintact*y08, data = dftotal2)
-mod2 <- lm(fgrade ~ nintact*y08 + log(pcons) + age + I(age^2) + pinv + pscinv + male + factor(minor) + factor(mdegree) + factor(fdegree), data = dftotal2)
+mod2 <- lm(fgrade ~ nintact*y08 + log(pcons) + age + I(age^2) + pinv + pscinv + male + minor + factor(mdegree) + factor(fdegree), data = dftotal2)
 
 stargazer(mod1, mod2, type = 'text',
           title="DiD of the parental separation on academic performance",
           header=FALSE, digits=2)
 
+# Accuracy tests ----------------------------------------------------------
+
+#Hypothesis testing
+#kable(anova(mod1, mod2), 
+#      caption="Chow test for the 'intact' equation")
+
+#Model selection criteria
+r1 <- as.numeric(glance(mod1))
+r2 <- as.numeric(glance(mod2))
+tab <- data.frame(rbind(r1, r2))[,c(1,2,8,9)]
+row.names(tab) <- c("nintact","nintact + controls")
+kable(tab, 
+      caption="Model comparison, 'nintact' ", digits=4, 
+      col.names=c("Rsq","AdjRsq","AIC","BIC"))
+
+#Ramsey test of higher-order polynomials (H0: higher order polynomials are needed)
+resettest(mod2, power=2:3, type="fitted")
+
+#VIF (variance inflation factor) test for multicollinearity
+tab <- tidy(vif(mod2)[, c(1)])
+kable(tab, 
+      caption="Variance inflation factors for the 'mpg' regression model",
+      col.names=c("regressor", "VIF"))
+#age and age^2 are highly correlated as expected but we can ignore that since one variable is the
+#linear transformation of the other, therefore the econometric problem is not present.
+
+#Heteroskedasticity of error terms w/ Breusch-Pagan test
+kable(tidy(bptest(mod2)), 
+      caption="Breusch-Pagan heteroskedasticity test")
+#we can reject the homoskedasticity
+
+# Robustness checks -------------------------------------------------------
+
+# Lags and Leads: If D causes Y then current and lagged values should have an effect on Y,
+# but future values of D should not.
+# 
+# Placebo permutation test: Randomly assign the intervention(s) to create the sampling distribution of the null hypothesis.
+# 
+# Use different comparison groups. Different groups should have the same affect.
+# 
+# Use an outcome variable that you know is not affected by the intervention. If DiD estimates not zero, then there is some other difference between groups.
+
+#Common trend assumption or SUTVA
 #plot of counterfactual
 
 b1 <- coef(mod1)[[1]]
@@ -730,45 +776,10 @@ segments(x0=0, y0=B, x1=1, y1=C, lty=3, col=3)#treated
 segments(x0=0, y0=B, x1=1, y1=D,      #counterfactual
          lty=4, col=4)
 legend("center", legend=c("control", "treated", 
-                            "counterfactual"), lty=c(1,3,4), col=c(2,3,4), cex = 0.75)
+                          "counterfactual"), lty=c(1,3,4), col=c(2,3,4), cex = 0.75)
 axis(side=1, at=c(0,1), labels=NULL)
 
 plot(1, log="y")
-
-#Hypothesis testing
-#kable(anova(mod1, mod2), 
-#      caption="Chow test for the 'intact' equation")
-
-#Model selection criteria
-r1 <- as.numeric(glance(mod1))
-r2 <- as.numeric(glance(mod2))
-tab <- data.frame(rbind(r1, r2))[,c(1,2,8,9)]
-row.names(tab) <- c("nintact","nintact + controls")
-kable(tab, 
-      caption="Model comparison, 'nintact' ", digits=4, 
-      col.names=c("Rsq","AdjRsq","AIC","BIC"))
-
-#VIF (variance inflation factor) test for collinearity
-tab <- tidy(vif(mod2)[, c(1)])
-kable(tab, 
-      caption="Variance inflation factors for the 'mpg' regression model",
-      col.names=c("regressor", "VIF"))
-#we need to drop the age variable
-
-#Heteroskedasticity of error terms w/ Breusch-Pagan test
-kable(tidy(bptest(mod2)), 
-      caption="Breusch-Pagan heteroskedasticity test")
-#we can reject the homoskedasticity
-
-#Robustness checks
-# Lags and Leads: If D causes Y then current and lagged values should have an effect on Y,
-# but future values of D should not.
-# 
-# Placebo permutation test: Randomly assign the intervention(s) to create the sampling distribution of the null hypothesis.
-# 
-# Use different comparison groups. Different groups should have the same affect.
-# 
-# Use an outcome variable that you know is not affected by the intervention. If DiD estimates not zero, then there is some other difference between groups.
 
 #Serial correlation
 
