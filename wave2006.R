@@ -687,8 +687,6 @@ df2008 <- remove_all_labels(df2008)
 df2009 <- remove_all_labels(df2009)
 
 dftotal <- rbind(df2006[, vars],
-                 df2007[, vars],
-                 df2008[, vars],
                  df2009[, vars])
 
 # EDA ---------------------------------------------------------------------
@@ -778,10 +776,9 @@ print(findCorrelation(cor, cutoff = 0.5))
 
 # Models ------------------------------------------------------------------
 #!!SUBSET FOR THOSE WHO WHERE IN INTACT FAMILIES IN 2006
-#e.g. reported intact family in Y-1 = 2006, Y0 = 2007, Y1 = 2008
+#e.g. reported intact family in Y-1 = 2006, Y1 = 2009, Y0 = somewhere between the two
 
-dftotal <- subset(dftotal, !(dftotal$year == 2006 & dftotal$nintact == 1))
-dftotal$post2007 <- ifelse(dftotal$year >= 2007, 1, 0)
+dftotal$y09 <- ifelse(dftotal$year == 2009, 1, 0)
 
 #create and rebalance panel dframe (DiD does not need a panel data, only repeated cross section data)
 pdf <- pdata.frame(dftotal, index <- c("ID", "post2007")) #cross sectional and wave dimensions
@@ -809,10 +806,10 @@ stargazer(ols_bi, ols_m1, ols_m2, ols_m3, type = 'text')
 
 #diff in diff models
 
-coeftest(lm(fgrade ~ nintact*post2006, data = dftotal))
+coeftest(lm(fgrade ~ nintact*y09, data = dftotal))
 
-mod1 <- lm(fgrade ~ nintact*post2006, data = dftotal)
-mod2 <- lm(fgrade ~ nintact*post2006 + I(mnsal/1000) + age + I(age^2) + pinv + pscinv + male + minor + factor(mdegree), data = dftotal)
+mod1 <- lm(fgrade ~ nintact*y09, data = dftotal)
+mod2 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + age + male + minor, data = dftotal)
 
 stargazer(mod1, mod2, type = 'text',
           title="DiD of the parental separation on academic performance",
