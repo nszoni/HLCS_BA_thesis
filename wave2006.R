@@ -24,10 +24,12 @@ setwd(wd)
 df2006_start <- read_dta("eletpalya_a.dta")
 df2007_start <- read_dta("eletpalya_b.dta")
 df2008_start <- read_dta("eletpalya_c.dta")
+df2009_start <- read_dta("eletpalya_d.dta")
 
 df2006_start$year <- 2006
 df2007_start$year <- 2007
 df2008_start$year <- 2008
+df2009_start$year <- 2009
 
 # Selecting variables -----------------------------------------------------
 
@@ -153,7 +155,8 @@ names(df2006) <- c('year',
 
 df2007 <- df2007_start %>% select(c(year,
                                     azon,
-                                    bc1ev,
+                                    bl01szul,
+                                    bl01neme,
                                     b83,
                                     b88,
                                     b3,
@@ -179,9 +182,9 @@ df2007 <- df2007_start %>% select(c(year,
                                     b23,
                                     b24,
                                     b30,
-                                    amisk,
-                                    afisk,
-                                    atest,
+                                    bmisk,
+                                    bfisk,
+                                    btest,
                                     acsaljov,
                                     b222,
                                     b22s,
@@ -222,6 +225,7 @@ df2007 <- df2007_start %>% select(c(year,
 names(df2007) <- c('year',
                    'ID',
                    'byear',
+                   'sex',
                    'full',
                    'grade',
                    'mbio',
@@ -290,6 +294,7 @@ names(df2007) <- c('year',
 df2008 <- df2008_start %>% select(c(year,
                                   azon,
                                   cl01szul,
+                                  cl01neme,
                                   c73,
                                   c77,
                                   c3,
@@ -312,9 +317,9 @@ df2008 <- df2008_start %>% select(c(year,
                                   c20,
                                   c21,
                                   c15,
-                                  amisk,
-                                  afisk,
-                                  atest,
+                                  cmisk,
+                                  cfisk,
+                                  ctest,
                                   acsaljov,
                                   c50,
                                   c50a,
@@ -336,6 +341,7 @@ df2008 <- df2008_start %>% select(c(year,
 names(df2008) <- c('year',
                    'ID',
                    'byear',
+                   'sex',
                    'full',
                    'grade',
                    'mbio',
@@ -379,6 +385,100 @@ names(df2008) <- c('year',
                    'sclass',
                    'sclassr')
 
+df2009 <- df2009_start %>% select(c(year,
+                                    azon,
+                                    dl01szul,
+                                    dl01neme,
+                                    d81,
+                                    d85,
+                                    d3,
+                                    d4,
+                                    d7,
+                                    d5,
+                                    d8,
+                                    d9,
+                                    d12,
+                                    d10,
+                                    d127,
+                                    d104,
+                                    d105,
+                                    d64e,
+                                    d64f,
+                                    d64g,
+                                    d64h,
+                                    d33c,
+                                    d42c,
+                                    d20,
+                                    d21,
+                                    d15,
+                                    dmisk,
+                                    dfisk,
+                                    dtest,
+                                    acsaljov,
+                                    d79,
+                                    d50,
+                                    d50a,
+                                    d103,
+                                    d114a,
+                                    d114c,
+                                    d114d,
+                                    d114g,
+                                    d114h,
+                                    d115e,
+                                    d115t,
+                                    d86,
+                                    d116,
+                                    d145d,
+                                    d128,
+                                    d129))
+
+names(df2009) <- c('year',
+                   'ID',
+                   'byear',
+                   'sex',
+                   'full',
+                   'grade',
+                   'mbio',
+                   'samembio',
+                   'mstep',
+                   'msep_reason',
+                   'fbio',
+                   'samefbio',
+                   'fstep',
+                   'fsep_reason',
+                   'schange',
+                   'pmeet',
+                   'pttalk',
+                   'txtbook',
+                   'transc',
+                   'xtraclass',
+                   'sctrip',
+                   'mnsal',
+                   'fnsal',
+                   'wnbrh',
+                   'cnbrh',
+                   'internet',
+                   'mdegree',
+                   'fdegree',
+                   'nsib',
+                   'pcons',
+                   'minor',
+                   'faminc',
+                   'rfaminc',
+                   'fullly',
+                   'math',
+                   'gram',
+                   'liter',
+                   'behav',
+                   'dilig',
+                   'intfgrade',
+                   'decfgrade',
+                   'sgrade',
+                   'nadv',
+                   'xp',
+                   'sclass',
+                   'sclassr')
+
 # Detailed family structure -----------------------------------------------
 
 attach(df2006)
@@ -405,6 +505,7 @@ df2006$schange <- 0
 
 #school changes due to movement between observed years
 df2007$schange <- ifelse(df2007$schange1 == 1 | df2007$schange2 == 1, 1, 0)
+df2008$schange <- ifelse(df2008$schange == 1, 1, 0)
 df2008$schange <- ifelse(df2008$schange == 1, 1, 0)
 
 #repeats the previous grade
@@ -433,9 +534,11 @@ df2007$xp <- ifelse((df2007$xpmiss == 1 |
 #merging time invariant variables such as ethnicity and sex
 df2006 <- merge(df2006, df2007[,c("ID", "minor")], by = "ID")
 df2008 <- merge(df2008, df2007[,c("ID", "minor")], by = "ID")
+
 df2006$male <- ifelse(df2006$sex == 1, 1, 0)
-df2007 <- merge(df2007, df2006[,c("ID", "male")], by = "ID")
-df2008 <- merge(df2008, df2006[,c("ID", "male")], by = "ID")
+df2007$male <- ifelse(df2007$sex == 1, 1, 0)
+df2008$male <- ifelse(df2008$sex == 1, 1, 0)
+df2009$male <- ifelse(df2009$sex == 1, 1, 0)
 
 #separation types
 df2006$divordth <- as.factor(ifelse(((df2006$msep_reason == 4) | (df2006$fsep_reason == 4)), 1, #divorce
@@ -444,6 +547,7 @@ df2006$divordth <- as.factor(ifelse(((df2006$msep_reason == 4) | (df2006$fsep_re
 
 #fixing grade scale
 df2007$grade[df2007$grade == 0] <- NA
+df2008$grade[df2008$grade == 0] <- NA
 df2008$grade[df2008$grade == 0] <- NA
 df2006$grade[df2006$grade == 9] <- NA
 df2006$grade[df2006$grade == 1] <- 8
@@ -580,9 +684,12 @@ vars <- c("ID",
 df2006 <- remove_all_labels(df2006)
 df2007 <- remove_all_labels(df2007)
 df2008 <- remove_all_labels(df2008)
+df2009 <- remove_all_labels(df2009)
 
 dftotal <- rbind(df2006[, vars],
-                 df2008[, vars])
+                 df2007[, vars],
+                 df2008[, vars],
+                 df2009[, vars])
 
 # EDA ---------------------------------------------------------------------
 
@@ -670,29 +777,29 @@ corrplot(res1$r, type="upper", order="hclust", p.mat = res1$P, sig.level = 0.05,
 print(findCorrelation(cor, cutoff = 0.5))
 
 # Models ------------------------------------------------------------------
-#!!SUBSET FOR THOSE WHO EXPERIENCED PARENTAL SEPARATION RECENTLY
-#e.g. reported intact family in 2006 but not in 2008
+#!!SUBSET FOR THOSE WHO WHERE IN INTACT FAMILIES IN 2006
+#e.g. reported intact family in Y-1 = 2006, Y0 = 2007, Y1 = 2008
 
-dftotal <- subset(dftotal, (year == 2006 & nintact == 0) | (year == 2008 & nintact == 1))
-dftotal$y08 <- ifelse(dftotal$year == 2008, 1, 0)
+dftotal <- subset(dftotal, !(dftotal$year == 2006 & dftotal$nintact == 1))
+dftotal$post2007 <- ifelse(dftotal$year >= 2007, 1, 0)
 
 #create and rebalance panel dframe (DiD does not need a panel data, only repeated cross section data)
-pdf <- pdata.frame(dftotal, index <- c("ID", "y08")) #cross sectional and wave dimensions
+pdf <- pdata.frame(dftotal, index <- c("ID", "post2007")) #cross sectional and wave dimensions
 pdf <- make.pbalanced(pdf, balance.type = "shared.individuals")
 pdim(pdf)
 
 #bivariate pooled OLS regression
  
-ols_bi <- lm(fgrade ~ intact, data = dftotal)
+ols_bi <- lm(fgrade ~ nintact, data = dftotal)
  
 #multivariate pooled OLS regression for final grade
 #sepage and divordeath is not representative (too much NAs)
 
-ols_m1 <- lm(fgrade ~ intact + mnsal + fnsal + gender + pscinv + pinv + schange, data = dftotal)
+ols_m1 <- lm(fgrade ~ nintact + mnsal + fnsal + gender + pscinv + pinv + schange, data = dftotal)
 
 #given that it is a intact (non-intact) family
-nintact <- subset(dftotal, intact == 0)
-intact <- subset(dftotal, intact == 1)
+intact <- subset(dftotal, nintact == 0)
+nintact <- subset(dftotal, nintact == 1)
 
 #ols for disrupted families
 ols_m2 <- lm(fgrade ~ mnsal + fnsal + gender + pscinv + pinv + schange, data = intact)
@@ -702,10 +809,10 @@ stargazer(ols_bi, ols_m1, ols_m2, ols_m3, type = 'text')
 
 #diff in diff models
 
-coeftest(lm(fgrade ~ nintact*y08, data = pdf))
+coeftest(lm(fgrade ~ nintact*post2006, data = dftotal))
 
-mod1 <- lm(fgrade ~ nintact*y08, data = pdf)
-mod2 <- lm(fgrade ~ nintact*y08 + log(pcons) + age + I(age^2) + pinv + pscinv + male + minor + factor(mdegree) + factor(fdegree), data = pdf)
+mod1 <- lm(fgrade ~ nintact*post2006, data = dftotal)
+mod2 <- lm(fgrade ~ nintact*post2006 + I(mnsal/1000) + age + I(age^2) + pinv + pscinv + male + minor + factor(mdegree), data = dftotal)
 
 stargazer(mod1, mod2, type = 'text',
           title="DiD of the parental separation on academic performance",
