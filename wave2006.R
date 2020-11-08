@@ -582,7 +582,6 @@ df2007 <- remove_all_labels(df2007)
 df2008 <- remove_all_labels(df2008)
 
 dftotal <- rbind(df2006[, vars],
-                 df2007[, vars],
                  df2008[, vars])
 
 # EDA ---------------------------------------------------------------------
@@ -671,11 +670,16 @@ corrplot(res1$r, type="upper", order="hclust", p.mat = res1$P, sig.level = 0.05,
 print(findCorrelation(cor, cutoff = 0.5))
 
 # Models ------------------------------------------------------------------
+#!!SUBSET FOR THOSE WHO EXPERIENCED PARENTAL SEPARATION RECENTLY
+#e.g. reported intact family in 2006 but not in 2008
+
+dftotal <- subset(dftotal, (year == 2006 & nintact == 0) | (year == 2008 & nintact == 1))
+dftotal$y08 <- ifelse(dftotal$year == 2008, 1, 0)
 
 #create and rebalance panel dframe (DiD does not need a panel data, only repeated cross section data)
-# pdf <- pdata.frame(dftotal, index <- c("ID", "year")) #cross sectional and wave dimensions
-# pdf <- make.pbalanced(pdf, balance.type = "shared.individuals")
-# pdim(pdf)
+pdf <- pdata.frame(dftotal, index <- c("ID", "y08")) #cross sectional and wave dimensions
+pdf <- make.pbalanced(pdf, balance.type = "shared.individuals")
+pdim(pdf)
 
 #bivariate pooled OLS regression
  
@@ -697,18 +701,11 @@ ols_m3 <- lm(fgrade ~ mnsal + fnsal + gender + pscinv + pinv + schange + divordt
 stargazer(ols_bi, ols_m1, ols_m2, ols_m3, type = 'text')
 
 #diff in diff models
-coef(lm(fgrade ~ intact, data = dftotal, subset=(year==2006)))
-coef(lm(fgrade ~ intact, data = dftotal, subset=(year==2007)))
-coef(lm(fgrade ~ intact, data = dftotal, subset=(year==2008)))
 
-#subset 2007 and 2008 and create year dummy
-dftotal2 <- subset(dftotal, (year == 2007 | year == 2008))
-dftotal2$y08 <- ifelse(dftotal2$year == 2008, 1, 0)
+coeftest(lm(fgrade ~ nintact*y08, data = pdf))
 
-coeftest(lm(fgrade ~ intact*y08, data = dftotal2))
-
-mod1 <- lm(fgrade ~ nintact*y08, data = dftotal2)
-mod2 <- lm(fgrade ~ nintact*y08 + log(pcons) + age + I(age^2) + pinv + pscinv + male + minor + factor(mdegree) + factor(fdegree), data = dftotal2)
+mod1 <- lm(fgrade ~ nintact*y08, data = pdf)
+mod2 <- lm(fgrade ~ nintact*y08 + log(pcons) + age + I(age^2) + pinv + pscinv + male + minor + factor(mdegree) + factor(fdegree), data = pdf)
 
 stargazer(mod1, mod2, type = 'text',
           title="DiD of the parental separation on academic performance",
@@ -781,7 +778,8 @@ axis(side=1, at=c(0,1), labels=NULL)
 
 plot(1, log="y")
 
-#Serial correlation
+#Serial correlation test with Breusch-Godfrey/Wooldridge test
+pbgtest(mod2, type = "F")
 
 ###################
 #   END OF CODE   #
