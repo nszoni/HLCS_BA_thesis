@@ -35,6 +35,7 @@ df2009_start$year <- 2009
 
 df2006 <- df2006_start %>% select(c(year,
                                     azon,
+                                    regio,
                                     af087xxx,
                                     af093xxx,
                                     af095xxx,
@@ -81,6 +82,7 @@ df2006 <- df2006_start %>% select(c(year,
                                     afisk, 
                                     atest, 
                                     acsaljov,
+                                    af210xxx,
                                     m_zpsc,
                                     o_zpsc, 
                                     ad003axx,
@@ -95,6 +97,7 @@ df2006 <- df2006_start %>% select(c(year,
 
 names(df2006) <- c('year',
                 'ID',
+                'region',
                 'full',
                 'grade',
                 'samesc',
@@ -141,6 +144,7 @@ names(df2006) <- c('year',
                 'fdegree',
                 'nsib',
                 'pcons',
+                'welf',
                 'math_comp',
                 'read_comp',
                 'math',
@@ -155,6 +159,7 @@ names(df2006) <- c('year',
 
 df2007 <- df2007_start %>% select(c(year,
                                     azon,
+                                    regio,
                                     bl01szul,
                                     bl01neme,
                                     b83,
@@ -186,6 +191,7 @@ df2007 <- df2007_start %>% select(c(year,
                                     bfisk,
                                     btest,
                                     acsaljov,
+                                    b64,
                                     b222,
                                     b22s,
                                     b65,
@@ -224,6 +230,7 @@ df2007 <- df2007_start %>% select(c(year,
 
 names(df2007) <- c('year',
                    'ID',
+                   'region',
                    'byear',
                    'sex',
                    'full',
@@ -255,6 +262,7 @@ names(df2007) <- c('year',
                    'fdegree',
                    'nsib',
                    'pcons',
+                   'welf',
                    'minor',
                    'movedly',
                    'faminc',
@@ -293,6 +301,7 @@ names(df2007) <- c('year',
 
 df2008 <- df2008_start %>% select(c(year,
                                   azon,
+                                  regio,
                                   cl01szul,
                                   cl01neme,
                                   c73,
@@ -321,6 +330,7 @@ df2008 <- df2008_start %>% select(c(year,
                                   cfisk,
                                   ctest,
                                   acsaljov,
+                                  c49,
                                   c50,
                                   c50a,
                                   c161,
@@ -340,6 +350,7 @@ df2008 <- df2008_start %>% select(c(year,
 
 names(df2008) <- c('year',
                    'ID',
+                   'region',
                    'byear',
                    'sex',
                    'full',
@@ -368,6 +379,7 @@ names(df2008) <- c('year',
                    'fdegree',
                    'nsib',
                    'pcons',
+                   'welf',
                    'faminc',
                    'rfaminc',
                    'subscr',
@@ -387,6 +399,7 @@ names(df2008) <- c('year',
 
 df2009 <- df2009_start %>% select(c(year,
                                     azon,
+                                    regio,
                                     dl01szul,
                                     dl01neme,
                                     d81,
@@ -415,6 +428,7 @@ df2009 <- df2009_start %>% select(c(year,
                                     dfisk,
                                     dtest,
                                     acsaljov,
+                                    d49,
                                     d79,
                                     d50,
                                     d50a,
@@ -434,6 +448,7 @@ df2009 <- df2009_start %>% select(c(year,
 
 names(df2009) <- c('year',
                    'ID',
+                   'region',
                    'byear',
                    'sex',
                    'full',
@@ -462,6 +477,7 @@ names(df2009) <- c('year',
                    'fdegree',
                    'nsib',
                    'pcons',
+                   'welf',
                    'minor',
                    'faminc',
                    'rfaminc',
@@ -647,6 +663,7 @@ write.table(sepage, "~/thesis_eletpalya/sepage.txt", sep="\t")
 
 vars <- c("ID",
           "year",
+          "region",
           "byear",
           "minor",
           "male",
@@ -672,6 +689,7 @@ vars <- c("ID",
           "fdegree",
           "nsib",
           "pcons",
+          'welf',
           'math',
           'gram',
           'liter',
@@ -755,24 +773,22 @@ flattenCorrMatrix <- function(cormat, pmat) {
   )
 }
 
-cormatdf <- dftotal[, c('gender',
+cormatdf <- dftotal[c('fgrade',
                     'mnsal',
                     'fnsal',
-                    'homesc',
-                    'pscinv',
                     'pinv',
-                    'nschange',
-                    'age_at_sepf')]
+                    'pcons',
+                    'nsib')]
 
 cor <- cormatdf %>% remove_all_labels() %>% cor(use = "complete.obs") %>% round(., 2)
 res1 <- rcorr(as.matrix(cormatdf))
-res2 <- flattenCorrMatrix(res1$r, res1$P)
+res2 <- flattenCorrMatrix(res1$r, res1$P) #table form
 
 write.table(res2, file = "~/thesis_eletpalya/res2.txt", sep="\t")
 
 # Insignificant correlation are crossed
 corrplot(res1$r, type="upper", order="hclust", p.mat = res1$P, sig.level = 0.05, tl.col = "black", tl.srt = 45)
-print(findCorrelation(cor, cutoff = 0.5))
+print(findCorrelation(cor, cutoff = 0.5)) #drop mnsal or pcons
 
 # Models ------------------------------------------------------------------
 #!!SUBSET FOR THOSE WHO WHERE IN INTACT FAMILIES IN 2006
@@ -781,9 +797,9 @@ print(findCorrelation(cor, cutoff = 0.5))
 dftotal$y09 <- ifelse(dftotal$year == 2009, 1, 0)
 
 #create and rebalance panel dframe (DiD does not need a panel data, only repeated cross section data)
-pdf <- pdata.frame(dftotal, index <- c("ID", "post2007")) #cross sectional and wave dimensions
-pdf <- make.pbalanced(pdf, balance.type = "shared.individuals")
-pdim(pdf)
+# pdf <- pdata.frame(dftotal, index <- c("ID", "post2007")) #cross sectional and wave dimensions
+# pdf <- make.pbalanced(pdf, balance.type = "shared.individuals")
+# pdim(pdf)
 
 #bivariate pooled OLS regression
  
@@ -808,11 +824,14 @@ stargazer(ols_bi, ols_m1, ols_m2, ols_m3, type = 'text')
 
 coeftest(lm(fgrade ~ nintact*y09, data = dftotal))
 
-mod1 <- lm(fgrade ~ nintact*y09, data = dftotal)
-mod2 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + age + male + minor, data = dftotal)
+mod1 <- lm(fgrade ~ nintact*y09, data = dftotal) #pure effect
+mod2 <- lm(fgrade ~ nintact*y09 + age + I(age^2/100) + male + minor + + full, data = dftotal) #adding time-invariant features
+mod3 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + minor + full, data = dftotal) #adding income related features
+mod4 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + minor + full + mdegree + nsib, data = dftotal) #other socioeconomic influences
+mod5 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + minor + full + mdegree + nsib + cnbrh + factor(region), data = dftotal) #controls for surroundings 
 
-stargazer(mod1, mod2, type = 'text',
-          title="DiD of the parental separation on academic performance",
+stargazer(mod1, mod2, mod3, mod4, mod5, type = 'text',
+          title="DD of the parental separation on final grade",
           header=FALSE, digits=2)
 
 # Accuracy tests ----------------------------------------------------------
@@ -834,9 +853,9 @@ kable(tab,
 resettest(mod2, power=2:3, type="fitted")
 
 #VIF (variance inflation factor) test for multicollinearity
-tab <- tidy(vif(mod2)[, c(1)])
+tab <- tidy(vif(mod5)[, c(1)])
 kable(tab, 
-      caption="Variance inflation factors for the 'mpg' regression model",
+      caption="Variance inflation factors for the 'fgrade' regression model",
       col.names=c("regressor", "VIF"))
 #age and age^2 are highly correlated as expected but we can ignore that since one variable is the
 #linear transformation of the other, therefore the econometric problem is not present.
@@ -860,10 +879,10 @@ kable(tidy(bptest(mod2)),
 #Common trend assumption or SUTVA
 #plot of counterfactual
 
-b1 <- coef(mod1)[[1]]
-b2 <- coef(mod1)[["nintact1"]]
-b3 <- coef(mod1)[["y08"]]
-delta <- coef(mod1)[["nintact1:y08"]]
+b1 <- coef(mod5)[[1]]
+b2 <- coef(mod5)[["nintact1"]]
+b3 <- coef(mod5)[["y08"]]
+delta <- coef(mod5)[["nintact1:y08"]]
 C <- b1+b2+b3+delta
 E <- b1+b3
 B <- b1+b2
@@ -871,19 +890,17 @@ A <- b1
 D <- E+(B-A)
 
 plot(1, type="n", main = "Estimated impact of parental separation", xlab="Period", ylab="Final Grade", xaxt="n",
-     xlim=c(-0.01, 1.01), ylim=c(3.42, 3.65))
-segments(x0=0, y0=A, x1=1, y1=E, lty=1, col=2)#control
-segments(x0=0, y0=B, x1=1, y1=C, lty=3, col=3)#treated
-segments(x0=0, y0=B, x1=1, y1=D,      #counterfactual
-         lty=4, col=4)
+     xlim=c(-0.01, 1.01), ylim=c(-4.04, -3.87))
+segments(x0=0, y0=A, x1=1, y1=E, lty=1, col=2, lwd = 5)#control
+segments(x0=0, y0=B, x1=1, y1=C, lty=3, col=3, lwd = 5)#treated
+segments(x0=0, y0=B, x1=1, y1=D, lty=4, col=4, lwd = 5) #counterfactual
 legend("center", legend=c("control", "treated", 
                           "counterfactual"), lty=c(1,3,4), col=c(2,3,4), cex = 0.75)
 axis(side=1, at=c(0,1), labels=NULL)
 
-plot(1, log="y")
 
 #Serial correlation test with Breusch-Godfrey/Wooldridge test
-pbgtest(mod2, type = "F")
+pbgtest(mod5, type = "F")
 
 ###################
 #   END OF CODE   #
