@@ -509,6 +509,9 @@ df2006$fam_str <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'tparent', #two-pa
                          ifelse((fstep == 1) & (mbio %in% c(2, NA)) & (mstep %in% c(2, NA)), 'sffoster', #foster-single-father family
                          ifelse((fbio %in% c(2, NA)) & (mbio %in% c(2, NA)) & (mstep %in% c(2, NA)) & (fstep %in% c(2, NA)), 'alone', NA))))))))))) #does not live with anyone
 
+# Family structure dummy
+df2006$nintact <- as.factor(ifelse((fbio == 1) & (mbio == 1), 0, 1))
+
 detach(df2006)
 
 # Unifying differences before union -----------------------------------------
@@ -573,21 +576,25 @@ df2006$grade[df2006$grade == 0] <- NA
 # Mean tables across family structures for starting year of 2006 ------------------------------------
 
 mfinc <- aggregate(df2006[, c('pcons', 'mnsal', 'fnsal')],
-                   list(df2006$intact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
+                   list(df2006$nintact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
 mgrades <- aggregate(df2006[, c('fgrade', 'math_comp', 'read_comp', 'math', 'gram', 'liter', 'behav', 'dilig')],
-                        list(df2006$intact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
+                        list(df2006$nintact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
 mscores <- aggregate(df2006[, c('homesc', 'cognisc', 'emotisc')],
-                     list(df2006$intact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
+                     list(df2006$nintact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
 nbrh <- aggregate(df2006[, c('wnbrh', 'cnbrh')],
-                     list(df2006$intact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
+                     list(df2006$nintact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
+
+pinv <- aggregate(df2006[, c('txtbook', 'transc', 'xtraclass', 'sctrip')],
+                   list(df2006$nintact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
 write.table(mfinc, "~/thesis_eletpalya/mfinc.txt", sep="\t")
 write.table(mgrades, "~/thesis_eletpalya/mygrades.txt", sep="\t")
 write.table(mscores, "~/thesis_eletpalya/mscores.txt", sep="\t")
 write.table(nbrh, "~/thesis_eletpalya/nbrh.txt", sep="\t")
+write.table(pinv, "~/thesis_eletpalya/pinv.txt", sep="\t")
 
 # Descriptive summaries 2006 ----------------------------------------------------
 
@@ -603,44 +610,44 @@ view(df2006sum, file = "~/thesis_eletpalya/df2006sum.html")
 fam_str1 <- freq(df2006$fam_str, report.nas = FALSE, 
                  cumul = FALSE, headings = FALSE)
 
-intact <- freq(df2006$intact, report.nas = FALSE, 
+nintact <- freq(df2006$nintact, report.nas = FALSE, 
                  cumul = FALSE, headings = FALSE)
 
 write.table(fam_str1, "~/thesis_eletpalya/fam_str1.txt", sep="\t")
-write.table(intact, "~/thesis_eletpalya/intact.txt", sep="\t")
+write.table(nintact, "~/thesis_eletpalya/nintact.txt", sep="\t")
 
-gndr <- ctable(df2006$gender, df2006$intact, prop = "c", chisq = TRUE)
+gndr <- ctable(df2006$gender, df2006$nintact, prop = "c", chisq = TRUE)
 write.table(gndr$proportions, "~/thesis_eletpalya/gndr.txt", sep="\t")
 
-rep4 <- ctable(df2006$rep4, df2006$intact, prop = "c", chisq = TRUE)
+rep4 <- ctable(df2006$rep4, df2006$nintact, prop = "c", chisq = TRUE)
 write.table(rep4$proportions, "~/thesis_eletpalya/rep4.txt", sep="\t")
 
-rep58 <- ctable(df2006$rep58, df2006$intact, prop = "c", chisq = TRUE)
+rep58 <- ctable(df2006$rep58, df2006$nintact, prop = "c", chisq = TRUE)
 write.table(rep58$proportions, "~/thesis_eletpalya/rep58.txt", sep="\t")
 
 #residential mobility
-resmob <- ctable(df2006$nschange, df2006$intact, prop = "c", chisq = TRUE)
+resmob <- ctable(df2006$nschange, df2006$nintact, prop = "c", chisq = TRUE)
 write.table(resmob$proportions, "~/thesis_eletpalya/resmobpp.txt", sep="\t")
 
 #suspension and expel
-exp <- ctable(df2006$nexp, df2006$intact, prop = "c", chisq = TRUE)
+exp <- ctable(df2006$nexp, df2006$nintact, prop = "c", chisq = TRUE)
 write.table(exp$proportions, "~/thesis_eletpalya/exp.txt", sep="\t")
 
 #leaving because of weak performance (~ drop out)
-dropout <- ctable(df2006$ndpout, df2006$intact, prop = "c", chisq = TRUE)
+dropout <- ctable(df2006$ndpout, df2006$nintact, prop = "c", chisq = TRUE)
 write.table(dropout$proportions, "~/thesis_eletpalya/dropout.txt", sep="\t")
 
 #for parental involvement
-ctable(df2006$peduc_asp, df2006$intact, prop = "c", chisq = TRUE, OR = TRUE)
+ctable(df2006$peduc_asp, df2006$nintact, prop = "c", chisq = TRUE, OR = TRUE)
 
 #the lower the better
 mpscinv <- aggregate(df2006[, c("pscinv", "pmeet", "pttalk", "studyparent")],
-                   list(df2006$intact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
+                   list(df2006$nintact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
 write.table(mpscinv, "~/thesis_eletpalya/mpscinv.txt", sep="\t")
 
 #additional parental investments not in home scale
-pinv <- ctable(df2006$pinv, df2006$intact, prop = "c", chisq = TRUE)
+pinv <- ctable(df2006$pinv, df2006$nintact, prop = "c", chisq = TRUE)
 write.table(pinv$proportions, "~/thesis_eletpalya/pinv.txt", sep="\t")
 
 #minority backround (gypsy)
