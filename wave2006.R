@@ -495,7 +495,7 @@ names(df2009) <- c('year',
                    'sclass',
                    'sclassr')
 
-# Detailed family structure -----------------------------------------------
+# Detailed family structure for 2006 -----------------------------------------------
 
 attach(df2006)
 df2006$fam_str <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'tparent', #two-parent family
@@ -525,7 +525,7 @@ df2006$schange <- 0
 #school changes due to movement between observed years
 df2007$schange <- ifelse(df2007$schange1 == 1 | df2007$schange2 == 1, 1, 0)
 df2008$schange <- ifelse(df2008$schange == 1, 1, 0)
-df2008$schange <- ifelse(df2008$schange == 1, 1, 0)
+df2009$schange <- ifelse(df2009$schange == 1, 1, 0)
 
 #repeats the previous grade
 df2006$sgrade <- ifelse(df2006$grade == 1, 1, 0) 
@@ -567,7 +567,7 @@ df2006$divordth <- as.factor(ifelse(((df2006$msep_reason == 4) | (df2006$fsep_re
 #fixing grade scale
 df2007$grade[df2007$grade == 0] <- NA
 df2008$grade[df2008$grade == 0] <- NA
-df2008$grade[df2008$grade == 0] <- NA
+df2009$grade[df2009$grade == 0] <- NA
 df2006$grade[df2006$grade == 9] <- NA
 df2006$grade[df2006$grade == 1] <- 8
 df2006$grade[df2006$grade == 2] <- 9
@@ -587,7 +587,9 @@ mscores <- aggregate(df2006[, c('homesc', 'cognisc', 'emotisc')],
 nbrh <- aggregate(df2006[, c('wnbrh', 'cnbrh')],
                      list(df2006$nintact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
-pinv <- aggregate(df2006[, c('txtbook', 'transc', 'xtraclass', 'sctrip')],
+df2006$pinv <- df2006$txtbook + df2006$transc + df2006$xtraclass + df2006$sctrip
+
+pinv <- aggregate(df2006[, c('txtbook', 'transc', 'xtraclass', 'sctrip', 'pinv')],
                    list(df2006$nintact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
 write.table(mfinc, "~/thesis_eletpalya/mfinc.txt", sep="\t")
@@ -665,6 +667,39 @@ write.table(divordth, "~/thesis_eletpalya/divordth.txt", sep="\t")
 sepage <- summary(df2006[, c("age_at_sepm", "age_at_sepf")])
 write.table(sepage, "~/thesis_eletpalya/sepage.txt", sep="\t")
 
+# Feature selection----------------------------------------------------
+df2006$fgrade <- concatFgrade(df2006, "fgrade", "infgrade", "decfgrade")
+
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor  =(cormat)[ut],
+    p = pmat[ut]
+  )
+}
+
+cormatdf <- df2006[c('fgrade',
+                      'mnsal',
+                      'fnsal',
+                      'pinv',
+                      'pcons',
+                      'nsib',
+                      'age_at_sepf',
+                      'homesc',
+                      'nschange',
+                      'nexp')]
+
+cor <- cormatdf %>% remove_all_labels() %>% cor(use = "complete.obs") %>% round(., 2)
+res1 <- rcorr(as.matrix(cormatdf))
+res2 <- flattenCorrMatrix(res1$r, res1$P) #table form
+
+write.table(res2, file = "~/thesis_eletpalya/res2.txt", sep="\t")
+
+# Insignificant correlation are crossed
+corrplot(res1$r, type="upper", order="hclust", p.mat = res1$P, sig.level = 0.05, tl.col = "black", tl.srt = 45)
+print(findCorrelation(cor, cutoff = 0.5)) #nothing highly correlates
 
 # Merging waves -------------------------------------------------------
 
@@ -768,35 +803,6 @@ dftotal$pinv <- dftotal$txtbook + dftotal$transc + dftotal$xtraclass + dftotal$s
 #treating gypsy as minor (dummy)
 dftotal$minor <- ifelse(dftotal$minor == 7, 1, 0)
 
-# Feature selection----------------------------------------------------
-
-flattenCorrMatrix <- function(cormat, pmat) {
-  ut <- upper.tri(cormat)
-  data.frame(
-    row = rownames(cormat)[row(cormat)[ut]],
-    column = rownames(cormat)[col(cormat)[ut]],
-    cor  =(cormat)[ut],
-    p = pmat[ut]
-  )
-}
-
-cormatdf <- dftotal[c('fgrade',
-                    'mnsal',
-                    'fnsal',
-                    'pinv',
-                    'pcons',
-                    'nsib')]
-
-cor <- cormatdf %>% remove_all_labels() %>% cor(use = "complete.obs") %>% round(., 2)
-res1 <- rcorr(as.matrix(cormatdf))
-res2 <- flattenCorrMatrix(res1$r, res1$P) #table form
-
-write.table(res2, file = "~/thesis_eletpalya/res2.txt", sep="\t")
-
-# Insignificant correlation are crossed
-corrplot(res1$r, type="upper", order="hclust", p.mat = res1$P, sig.level = 0.05, tl.col = "black", tl.srt = 45)
-print(findCorrelation(cor, cutoff = 0.5)) #drop mnsal or pcons
-
 # Models ------------------------------------------------------------------
 #!!SUBSET FOR THOSE WHO WHERE IN INTACT FAMILIES IN 2006
 #e.g. reported intact family in Y-1 = 2006, Y1 = 2009, Y0 = somewhere between the two
@@ -857,7 +863,7 @@ kable(tab,
       col.names=c("Rsq","AdjRsq","AIC","BIC"))
 
 #Ramsey test of higher-order polynomials (H0: higher order polynomials are needed)
-resettest(mod2, power=2:3, type="fitted")
+resettest(mod5, power=2:3, type="fitted")
 
 #VIF (variance inflation factor) test for multicollinearity
 tab <- tidy(vif(mod5)[, c(1)])
@@ -905,9 +911,9 @@ legend("center", legend=c("control", "treated",
                           "counterfactual"), lty=c(1,3,4), col=c(2,3,4), cex = 0.75)
 axis(side=1, at=c(0,1), labels=NULL)
 
-
-#Serial correlation test with Breusch-Godfrey/Wooldridge test
-pbgtest(mod5, type = "F")
+#Breusch-Pagan test for heteroskedasticity of residuals (with White robust error)
+kable(tidy(bptest(mod5)), 
+      caption="Breusch-Pagan heteroskedasticity test")
 
 ###################
 #   END OF CODE   #
