@@ -512,6 +512,8 @@ df2006$fam_str <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'tparent', #two-pa
 # Family structure dummy
 df2006$nintact <- as.factor(ifelse((fbio == 1) & (mbio == 1), 0, 1))
 
+df2006$pinv <- df2006$txtbook + df2006$transc + df2006$xtraclass + df2006$sctrip
+
 detach(df2006)
 
 # Unifying differences before union -----------------------------------------
@@ -586,8 +588,6 @@ mscores <- aggregate(df2006[, c('homesc', 'cognisc', 'emotisc')],
 
 nbrh <- aggregate(df2006[, c('wnbrh', 'cnbrh')],
                      list(df2006$nintact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
-
-df2006$pinv <- df2006$txtbook + df2006$transc + df2006$xtraclass + df2006$sctrip
 
 pinv <- aggregate(df2006[, c('txtbook', 'transc', 'xtraclass', 'sctrip', 'pinv')],
                    list(df2006$nintact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
@@ -698,7 +698,7 @@ res2 <- flattenCorrMatrix(res1$r, res1$P) #table form
 write.table(res2, file = "~/thesis_eletpalya/res2.txt", sep="\t")
 
 # Insignificant correlation are crossed
-corrplot(res1$r, type="upper", order="hclust", p.mat = res1$P, sig.level = 0.05, tl.col = "black", tl.srt = 45)
+corrplot(res1$r, type="upper", order="hclust", p.mat = res1$P, sig.level = 0.01, tl.col = "black", tl.srt = 45)
 print(findCorrelation(cor, cutoff = 0.5)) #nothing highly correlates
 
 # Merging waves -------------------------------------------------------
@@ -841,11 +841,42 @@ mod1 <- lm(fgrade ~ nintact*y09, data = dftotal) #pure effect
 mod2 <- lm(fgrade ~ nintact*y09 + age + I(age^2/100) + male + minor + + full, data = dftotal) #adding time-invariant features
 mod3 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + minor + full, data = dftotal) #adding income related features
 mod4 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + minor + full + mdegree + nsib, data = dftotal) #other socioeconomic influences
-mod5 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + minor + full + mdegree + nsib + cnbrh + factor(region), data = dftotal) #controls for surroundings 
+mod5 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + minor + full + mdegree + nsib + cnbrh + factor(region), data = dftotal) #controls for geos
 
-stargazer(mod1, mod2, mod3, mod4, mod5, type = 'text',
-          title="DD of the parental separation on final grade",
-          header=FALSE, digits=2)
+stargazer(mod1, mod2, mod3, mod4, mod5,
+          title="DiD of the parental separation on final grade",
+          header=FALSE, 
+          digits=2,
+          font.size = "small",
+          align = TRUE,
+          omit.stat = c("f", "ser"),
+          column.sep.width = "0pt",
+          no.space = TRUE,
+          dep.var.labels = "Final Grade",
+          covariate.labels = c("Non-intact",
+                               "Y2009",
+                               "Maternal Net Salary",
+                               "Poor welfare",
+                               "Average welfare",
+                               "Above-average welfare",
+                               "Very good welfare",
+                               "Age",
+                               "Age**2",
+                               "Male",
+                               "Roma-origin",
+                               "Full-time",
+                               "Degree of mother",
+                               "Number of Siblings",
+                               "Neighborhood conditions",
+                               "Central Transdanubia",
+                               "Western Transdanubia",
+                               "Southern Transdanubia",
+                               "Norhtern Hungary",
+                               "Northern Great Plain",
+                               "Southern Great Plain",
+                               "Non-intact*Y2009"),
+          column.labels = c("baseline", "time-invariant", "income related", "other SES", "geographical"),
+          type = "latex")
 
 # Accuracy tests ----------------------------------------------------------
 
