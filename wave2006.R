@@ -801,7 +801,7 @@ dftotal$pscinv <- dftotal$pmeet + dftotal$pttalk
 dftotal$pinv <- dftotal$txtbook + dftotal$transc + dftotal$xtraclass + dftotal$sctrip
 
 #treating gypsy as minor (dummy)
-dftotal$minor <- ifelse(dftotal$minor == 7, 1, 0)
+dftotal$roma <- ifelse(dftotal$minor == 7, 1, 0)
 
 # Models ------------------------------------------------------------------
 #!!SUBSET FOR THOSE WHO WHERE IN INTACT FAMILIES IN 2006
@@ -810,9 +810,9 @@ dftotal$minor <- ifelse(dftotal$minor == 7, 1, 0)
 dftotal$y09 <- ifelse(dftotal$year == 2009, 1, 0)
 
 #create and rebalance panel dframe (DiD does not need a panel data, only repeated cross section data)
-# pdf <- pdata.frame(dftotal, index <- c("ID", "post2007")) #cross sectional and wave dimensions
-# pdf <- make.pbalanced(pdf, balance.type = "shared.individuals")
-# pdim(pdf)
+# dftotal <- pdata.frame(dftotal, index <- c("ID", "y09")) #cross sectional and wave dimensions
+# dftotal <- make.pbalanced(dftotal, balance.type = "shared.individuals")
+# pdim(dftotal)
 
 #bivariate pooled OLS regression
  
@@ -839,9 +839,9 @@ coeftest(lm(fgrade ~ nintact*y09, data = dftotal))
 
 mod1 <- lm(fgrade ~ nintact*y09, data = dftotal) #pure effect
 mod2 <- lm(fgrade ~ nintact*y09 + age + I(age^2/100) + male + minor + + full, data = dftotal) #adding time-invariant features
-mod3 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + minor + full, data = dftotal) #adding income related features
-mod4 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + minor + full + mdegree + nsib, data = dftotal) #other socioeconomic influences
-mod5 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + minor + full + mdegree + nsib + cnbrh + factor(region), data = dftotal) #controls for geos
+mod3 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + roma + full, data = dftotal) #adding income related features
+mod4 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + roma + full + mdegree + nsib, data = dftotal) #other socioeconomic influences
+mod5 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + roma + full + mdegree + nsib + cnbrh + factor(region), data = dftotal) #controls for geos
 
 stargazer(mod1, mod2, mod3, mod4, mod5,
           title="DiD of the parental separation on final grade",
@@ -911,13 +911,25 @@ kable(tidy(bptest(mod2)),
 
 # Robustness checks -------------------------------------------------------
 
+# Placebo permutation test: Randomly assign the intervention(s) to create the sampling distribution of the null hypothesis.
+      
+      # 1) Drop all the outcomes for treated observations after they receive treatment for the the first time. Everyone in the remaining data should only have untreated outcome data.
+      
+      # 2) Insert a phantom treatment event in the middle of the remaining data for the treated group. You might have to break some ties if you have an even number of periods.
+      
+      # 3) Run your diff-in-diff model and check the interaction coefficient.
+
+set.seed(1234)
+dftotalp <- as.data.table(dftotal[!(dftotal$nintact == 1 & dftotal$y09 == 1),])
+dftotalp[y09 == 1, nintact := sample(1:2, .N, replace = T)]
+modp <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + roma + full + mdegree + nsib + cnbrh + factor(region), data = dftotalp)
+stargazer(modp, type = "text") #interaction is no more significant --> assumption holds
+
 # Lags and Leads: If D causes Y then current and lagged values should have an effect on Y,
 # but future values of D should not.
-# 
-# Placebo permutation test: Randomly assign the intervention(s) to create the sampling distribution of the null hypothesis.
-# 
+
 # Use different comparison groups. Different groups should have the same affect.
-# 
+
 # Use an outcome variable that you know is not affected by the intervention. If DiD estimates not zero, then there is some other difference between groups.
 
 #Common trend assumption or SUTVA
@@ -941,10 +953,6 @@ segments(x0=0, y0=B, x1=1, y1=D, lty=4, col=4, lwd = 5) #counterfactual
 legend("center", legend=c("control", "treated", 
                           "counterfactual"), lty=c(1,3,4), col=c(2,3,4), cex = 0.75)
 axis(side=1, at=c(0,1), labels=NULL)
-
-#Breusch-Pagan test for heteroskedasticity of residuals (with White robust error)
-kable(tidy(bptest(mod5)), 
-      caption="Breusch-Pagan heteroskedasticity test")
 
 ###################
 #   END OF CODE   #
