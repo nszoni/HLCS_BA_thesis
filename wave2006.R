@@ -16,7 +16,9 @@ pacman::p_load(AER, haven, ggplot2, dplyr,
                stargazer, labelled, sjlabelled,
                summarytools, reshape2, Hmisc,
                corrplot, caret, foreign, lmtest,
-               broom, knitr)
+               broom, knitr, did, DRDID, devtools, ggpubr)
+
+# devtools::install_github("bcallaway11/did")
 
 wd <- file.path("~", "thesis_eletpalya", "kesz")
 setwd(wd)
@@ -809,11 +811,6 @@ dftotal$roma <- ifelse(dftotal$minor == 7, 1, 0)
 
 dftotal$y09 <- ifelse(dftotal$year == 2009, 1, 0)
 
-#create and rebalance panel dframe (DiD does not need a panel data, only repeated cross section data)
-# dftotal <- pdata.frame(dftotal, index <- c("ID", "y09")) #cross sectional and wave dimensions
-# dftotal <- make.pbalanced(dftotal, balance.type = "shared.individuals")
-# pdim(dftotal)
-
 #bivariate pooled OLS regression
  
 ols_bi <- lm(fgrade ~ nintact, data = dftotal)
@@ -953,6 +950,112 @@ segments(x0=0, y0=B, x1=1, y1=D, lty=4, col=4, lwd = 5) #counterfactual
 legend("center", legend=c("control", "treated", 
                           "counterfactual"), lty=c(1,3,4), col=c(2,3,4), cex = 0.75)
 axis(side=1, at=c(0,1), labels=NULL)
+
+
+# Staggered DID -----------------------------------------------------------
+
+dftotal2 <- rbind(df2006[, vars],
+                  df2007[, vars],
+                  df2008[, vars],
+                  df2009[, vars])
+
+concatFgrade <- function(dftotal2, fgrade, intfgrade, decfgrade){
+  dftotal2$fgrade <- as.numeric(paste(dftotal2$intfgrade, dftotal2$decfgrade, sep = "."))
+}
+
+dftotal2$fgrade <- concatFgrade(dftotal2, "fgrade", "infgrade", "decfgrade")
+dftotal2 <- dftotal2[,!(names(dftotal2) %in% c("intfgrade", "decfgrade"))]
+
+#Replace missing values with NA
+
+dftotal2[dftotal2 == -6 | dftotal2 == 99 | dftotal2 == 88 | dftotal2 == 999 | dftotal2 == 9999] <- NA
+dftotal2$fgrade[dftotal2$fgrade > 5 | dftotal2$fgrade < 1] <- NA
+dftotal2[,!names(dftotal2) %in% c("grade",
+                                "age_at_sepf",
+                                "age_at_sepm",
+                                "age_at_remf",
+                                "age_at_remm",
+                                "mrel",
+                                "methnic",
+                                "fethnic",
+                                "mdegree",
+                                "fdegree")][dftotal2[,!names(dftotal2) %in% c("grade",
+                                                                            "age_at_sepf",
+                                                                            "age_at_sepm",
+                                                                            "age_at_remf",
+                                                                            "age_at_remm",
+                                                                            "mrel",
+                                                                            "methnic",
+                                                                            "fethnic",
+                                                                            "mdegree",
+                                                                            "fdegree",
+                                                                            "rfaminc")] == 9 ] <- NA
+
+#create age column
+dftotal2$age <- dftotal2$year - dftotal2$byear
+
+# Family structure dummy
+dftotal2$nintact <- as.factor(ifelse((dftotal2$fbio == 1) & (dftotal2$mbio == 1), 0, 1))
+
+#measure of dropouts as studied or not
+dftotal2$study <- ifelse(dftotal2$full == 5, 0, 1)
+
+#create index for parental school involvement
+dftotal2$pscinv <- dftotal2$pmeet + dftotal2$pttalk
+
+#parental investments
+dftotal2$pinv <- dftotal2$txtbook + dftotal2$transc + dftotal2$xtraclass + dftotal2$sctrip
+
+#treating gypsy as minor (dummy)
+dftotal2$roma <- ifelse(dftotal2$minor == 7, 1, 0)
+
+dftotal2$nintact <- as.numeric(levels(dftotal2$nintact))[dftotal2$nintact]
+first_treat <- aggregate(year ~ ID, data = dftotal2[dftotal2$nintact==1, ], FUN = min)
+names(first_treat) <- c("ID", "first_treat")
+
+dftotal2 <- dftotal2 %>%
+  left_join(first_treat, by = "ID")
+
+dftotal2$first_treat <- ifelse(is.na(dftotal2$first_treat), 0, dftotal2$first_treat)
+
+# create and rebalance panel dframe (DiD does not need a panel data, only repeated cross section data)
+# dftotal2 <- pdata.frame(dftotal2, index <- c("ID", "year")) #cross sectional and wave dimensions
+# dftotal2 <- make.pbalanced(dftotal2, balance.type = "shared.individuals")
+# pdim(dftotal2)
+
+dftotal2 <- na.omit(dftotal2[,c("ID","year","male","nintact","roma","mdegree","mnsal","nsib","age","region","fgrade","first_treat")])
+
+pre.test <- conditional_did_pretest(yname = "fgrade",
+                                    tname = "year",
+                                    idname = "ID",
+                                    first.treat.name = "first_treat",
+                                    xformla = ~ male + roma + mdegree + region + age + mnsal + nsib,
+                                    data = dftotal2)
+
+summary(pre.test)
+
+att_gt <- att_gt(yname = "fgrade",
+                   tname = "year",
+                   first.treat.name = "first_treat",
+                   xformla = ~ male + roma + mdegree + region + age + mnsal + nsib,
+                   data = dftotal2,
+                   bstrap=TRUE,
+                   cband=TRUE,
+                   panel = FALSE,
+                   estMethod = "reg")
+
+summary(att_gt)
+
+ggdid(att_gt)
+
+did.dyn <- aggte(att_gt, type="dynamic")
+did.sel <- aggte(att_gt, type="selective")
+did.cal <- aggte(att_gt, type="calendar")
+
+# plot the event study
+ggdid(did.dyn)
+ggdid(did.sel)
+ggdid(did.cal)
 
 ###################
 #   END OF CODE   #
