@@ -1023,39 +1023,106 @@ dftotal2$first_treat <- ifelse(is.na(dftotal2$first_treat), 0, dftotal2$first_tr
 # dftotal2 <- make.pbalanced(dftotal2, balance.type = "shared.individuals")
 # pdim(dftotal2)
 
-dftotal2 <- na.omit(dftotal2[,c("ID","year","male","nintact","roma","mdegree","mnsal","nsib","age","region","fgrade","first_treat")])
+dftotal2 <- dftotal2[!(dftotal2$year == 2006 & dftotal2$nintact == 1),]#drop already treated in pretreatment (2006)
+
+dftotal3 <- na.omit(dftotal2[,c("ID","year","fgrade","first_treat")])
+dftotal4 <- na.omit(dftotal2[,c("ID","year","male","roma","age","fgrade","first_treat")])
+dftotal5 <- na.omit(dftotal2[,c("ID","year","male","roma","mnsal","age","fgrade","first_treat")])
+dftotal6 <- na.omit(dftotal2[,c("ID","year","male","roma","mdegree","mnsal","nsib","age","fgrade","pscinv","first_treat")])
+dftotal7 <- na.omit(dftotal2[,c("ID","year","male","roma","mdegree","mnsal","nsib","age","region","fgrade","pscinv","first_treat")])
 
 pre.test <- conditional_did_pretest(yname = "fgrade",
                                     tname = "year",
                                     idname = "ID",
                                     first.treat.name = "first_treat",
                                     xformla = ~ male + roma + mdegree + region + age + mnsal + nsib,
-                                    data = dftotal2)
+                                    data = dftotal3)
 
 summary(pre.test)
 
+#unconditional att(g,t)
 att_gt <- att_gt(yname = "fgrade",
+                 tname = "year",
+                 first.treat.name = "first_treat",
+                 control.group = "nevertreated",
+                 xformla = ~1,
+                 data = dftotal3,
+                 bstrap = TRUE,
+                 panel = FALSE,
+                 estMethod = "reg")
+
+#conditional att(g,t) w/time invariant exogeneous features
+att_gtc1 <- att_gt(yname = "fgrade",
                    tname = "year",
                    first.treat.name = "first_treat",
-                   xformla = ~ male + roma + mdegree + region + age + mnsal + nsib,
-                   data = dftotal2,
+                   xformla = ~ male + roma + age + age**2,
+                   control.group = "nevertreated",
+                   data = dftotal4,
                    bstrap=TRUE,
-                   cband=TRUE,
                    panel = FALSE,
                    estMethod = "reg")
 
+#adding income related features
+att_gtc2 <- att_gt(yname = "fgrade",
+                  tname = "year",
+                  first.treat.name = "first_treat",
+                  xformla = ~ male + roma + age + age**2 + mnsal,
+                  control.group = "nevertreated",
+                  data = dftotal5,
+                  bstrap=TRUE,
+                  panel = FALSE,
+                  estMethod = "reg")
+
+att_gtc3 <- att_gt(yname = "fgrade",
+                  tname = "year",
+                  first.treat.name = "first_treat",
+                  xformla = ~ male + roma + age + age**2 + mnsal + nsib + pscinv + mdegree,
+                  control.group = "nevertreated",
+                  data = dftotal6,
+                  bstrap=TRUE,
+                  panel = FALSE,
+                  estMethod = "reg")
+
+att_gtc4 <- att_gt(yname = "fgrade",
+                  tname = "year",
+                  first.treat.name = "first_treat",
+                  xformla = ~ male + roma + age + age**2 + mnsal + nsib + pscinv + mdegree + region,
+                  control.group = "nevertreated",
+                  data = dftotal7,
+                  bstrap=TRUE,
+                  panel = FALSE,
+                  estMethod = "reg")
+
 summary(att_gt)
+summary(att_gtc1)
+summary(att_gtc2)
+summary(att_gtc3)
+summary(att_gtc4)
 
 ggdid(att_gt)
+ggdid(att_gtc1)
+ggdid(att_gtc2)
+ggdid(att_gtc3)
+ggdid(att_gtc4)
 
-did.dyn <- aggte(att_gt, type="dynamic")
-did.sel <- aggte(att_gt, type="selective")
-did.cal <- aggte(att_gt, type="calendar")
+did.dynuc <- aggte(att_gt, type="dynamic")
+did.dync1 <- aggte(att_gtc1, type="dynamic")
+did.dync2 <- aggte(att_gtc2, type="dynamic")
+did.dync3 <- aggte(att_gtc3, type="dynamic")
+did.dync4 <- aggte(att_gtc4, type="dynamic")
+
+summary(did.dynuc)
+summary(did.dync1)
+summary(did.dync2)
+summary(did.dync3)
+summary(did.dync4)
 
 # plot the event study
-ggdid(did.dyn)
-ggdid(did.sel)
-ggdid(did.cal)
+ggdid(did.dynuc)
+ggdid(did.dync1)
+ggdid(did.dync2)
+ggdid(did.dync3)
+ggdid(did.dync4)
 
 ###################
 #   END OF CODE   #
