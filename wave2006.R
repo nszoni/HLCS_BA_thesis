@@ -805,7 +805,7 @@ dftotal$pinv <- dftotal$txtbook + dftotal$transc + dftotal$xtraclass + dftotal$s
 #treating gypsy as minor (dummy)
 dftotal$roma <- ifelse(dftotal$minor == 7, 1, 0)
 
-# Models ------------------------------------------------------------------
+# TWFE regression ------------------------------------------------------------------
 #!!SUBSET FOR THOSE WHO WHERE IN INTACT FAMILIES IN 2006
 #e.g. reported intact family in Y-1 = 2006, Y1 = 2009, Y0 = somewhere between the two
 
@@ -1035,8 +1035,8 @@ pre.test <- conditional_did_pretest(yname = "fgrade",
                                     tname = "year",
                                     idname = "ID",
                                     first.treat.name = "first_treat",
-                                    xformla = ~ male + roma + mdegree + region + age + mnsal + nsib,
-                                    data = dftotal3)
+                                    xformla = ~ male + roma + age + age**2 + mnsal + nsib + pscinv + mdegree + region,
+                                    data = dftotal7)
 
 summary(pre.test)
 
@@ -1119,7 +1119,16 @@ summary(did.dync4)
 
 # plot the event study
 ggdid(did.dynuc)
-ggdid(did.dync1)
+
+ggdid(did.dync1) + 
+  geom_smooth(aes(did.dync1$egt, did.dync1$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.4), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Parental Separation ~ Final Grade",
+       xlab = "Periods",
+       ylab = "Change in Final Grade",
+       subtitle = "Covariates: Gender + Age + Age^2 + Roma-origin")
+
 ggdid(did.dync2)
 ggdid(did.dync3)
 ggdid(did.dync4)
