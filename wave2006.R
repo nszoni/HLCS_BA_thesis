@@ -1042,8 +1042,7 @@ att_gt <- att_gt(yname = "fgrade",
                  xformla = ~1,
                  data = dftotal3,
                  bstrap = TRUE,
-                 panel = FALSE,
-                 estMethod = "reg")
+                 panel = FALSE)
 
 #conditional att(g,t) w/time invariant exogeneous features
 att_gtc1 <- att_gt(yname = "fgrade",
@@ -1053,8 +1052,7 @@ att_gtc1 <- att_gt(yname = "fgrade",
                    control.group = "nevertreated",
                    data = dftotal4,
                    bstrap=TRUE,
-                   panel = FALSE,
-                   estMethod = "reg")
+                   panel = FALSE)
 
 #adding income related features
 att_gtc2 <- att_gt(yname = "fgrade",
@@ -1064,8 +1062,7 @@ att_gtc2 <- att_gt(yname = "fgrade",
                   control.group = "nevertreated",
                   data = dftotal5,
                   bstrap=TRUE,
-                  panel = FALSE,
-                  estMethod = "reg")
+                  panel = FALSE)
 
 #adding other SES vars
 att_gtc3 <- att_gt(yname = "fgrade",
@@ -1075,8 +1072,7 @@ att_gtc3 <- att_gt(yname = "fgrade",
                   control.group = "nevertreated",
                   data = dftotal6,
                   bstrap=TRUE,
-                  panel = FALSE,
-                  estMethod = "reg")
+                  panel = FALSE)
 
 #adding regional differences
 att_gtc4 <- att_gt(yname = "fgrade",
@@ -1086,8 +1082,7 @@ att_gtc4 <- att_gt(yname = "fgrade",
                   control.group = "nevertreated",
                   data = dftotal7,
                   bstrap=TRUE,
-                  panel = FALSE,
-                  estMethod = "reg")
+                  panel = FALSE)
 
 summary(att_gt)
 summary(att_gtc1)
