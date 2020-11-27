@@ -951,7 +951,6 @@ legend("center", legend=c("control", "treated",
                           "counterfactual"), lty=c(1,3,4), col=c(2,3,4), cex = 0.75)
 axis(side=1, at=c(0,1), labels=NULL)
 
-
 # Staggered DID -----------------------------------------------------------
 
 dftotal2 <- rbind(df2006[, vars],
@@ -1018,11 +1017,6 @@ dftotal2 <- dftotal2 %>%
 
 dftotal2$first_treat <- ifelse(is.na(dftotal2$first_treat), 0, dftotal2$first_treat)
 
-# create and rebalance panel dframe (DiD does not need a panel data, only repeated cross section data)
-# dftotal2 <- pdata.frame(dftotal2, index <- c("ID", "year")) #cross sectional and wave dimensions
-# dftotal2 <- make.pbalanced(dftotal2, balance.type = "shared.individuals")
-# pdim(dftotal2)
-
 dftotal2 <- dftotal2[!(dftotal2$year == 2006 & dftotal2$nintact == 1),]#drop already treated in pretreatment (2006)
 
 dftotal3 <- na.omit(dftotal2[,c("ID","year","fgrade","first_treat")])
@@ -1073,6 +1067,7 @@ att_gtc2 <- att_gt(yname = "fgrade",
                   panel = FALSE,
                   estMethod = "reg")
 
+#adding other SES vars
 att_gtc3 <- att_gt(yname = "fgrade",
                   tname = "year",
                   first.treat.name = "first_treat",
@@ -1083,6 +1078,7 @@ att_gtc3 <- att_gt(yname = "fgrade",
                   panel = FALSE,
                   estMethod = "reg")
 
+#adding regional differences
 att_gtc4 <- att_gt(yname = "fgrade",
                   tname = "year",
                   first.treat.name = "first_treat",
@@ -1118,7 +1114,15 @@ summary(did.dync3)
 summary(did.dync4)
 
 # plot the event study
-ggdid(did.dynuc)
+
+ggdid(did.dynuc) + 
+  geom_smooth(aes(did.dynuc$egt, did.dynuc$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.4), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Parental Separation ~ Final Grade",
+       xlab = "Periods",
+       ylab = "Change in Final Grade",
+       subtitle = "Unconditional Design")
 
 ggdid(did.dync1) + 
   geom_smooth(aes(did.dync1$egt, did.dync1$att.egt), lwd = 0.8, col = "black") + 
@@ -1129,9 +1133,32 @@ ggdid(did.dync1) +
        ylab = "Change in Final Grade",
        subtitle = "Covariates: Gender + Age + Age^2 + Roma-origin")
 
-ggdid(did.dync2)
-ggdid(did.dync3)
-ggdid(did.dync4)
+ggdid(did.dync2) + 
+  geom_smooth(aes(did.dync2$egt, did.dync2$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.4), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Parental Separation ~ Final Grade",
+       xlab = "Periods",
+       ylab = "Change in Final Grade",
+       subtitle = "Covariates: Gender + Age + Age^2 + Roma-origin + Maternal Salary")
+
+ggdid(did.dync3) + 
+  geom_smooth(aes(did.dync3$egt, did.dync3$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.4), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Parental Separation ~ Final Grade",
+       xlab = "Periods",
+       ylab = "Change in Final Grade",
+       subtitle = "Covariates: Gender + Age + Age^2 + Roma-origin + Maternal Salary + No. Siblings + Maternal Degree + Parental School Involvement")
+
+ggdid(did.dync4) + 
+  geom_smooth(aes(did.dync4$egt, did.dync4$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.4), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Parental Separation ~ Final Grade",
+       xlab = "Periods",
+       ylab = "Change in Final Grade",
+       subtitle = "Covariates: Gender + Age + Age^2 + Roma-origin + Maternal Salary + No. Siblings + Maternal Degree + Parental School Involvement + Region")
 
 ###################
 #   END OF CODE   #
