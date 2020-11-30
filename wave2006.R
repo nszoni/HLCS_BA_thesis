@@ -16,7 +16,7 @@ pacman::p_load(AER, haven, ggplot2, dplyr,
                stargazer, labelled, sjlabelled,
                summarytools, reshape2, Hmisc,
                corrplot, caret, foreign, lmtest,
-               broom, knitr, did, DRDID, devtools, ggpubr)
+               broom, knitr, did, DRDID, devtools, ggpubr, xtable)
 
 # devtools::install_github("bcallaway11/did")
 
@@ -1042,7 +1042,8 @@ att_gt <- att_gt(yname = "fgrade",
                  xformla = ~1,
                  data = dftotal3,
                  bstrap = TRUE,
-                 panel = FALSE)
+                 panel = FALSE,
+                 estMethod = "reg")
 
 #conditional att(g,t) w/time invariant exogeneous features
 att_gtc1 <- att_gt(yname = "fgrade",
@@ -1052,7 +1053,8 @@ att_gtc1 <- att_gt(yname = "fgrade",
                    control.group = "nevertreated",
                    data = dftotal4,
                    bstrap=TRUE,
-                   panel = FALSE)
+                   panel = FALSE,
+                   estMethod = "reg")
 
 #adding income related features
 att_gtc2 <- att_gt(yname = "fgrade",
@@ -1062,7 +1064,8 @@ att_gtc2 <- att_gt(yname = "fgrade",
                   control.group = "nevertreated",
                   data = dftotal5,
                   bstrap=TRUE,
-                  panel = FALSE)
+                  panel = FALSE,
+                  estMethod = "reg")
 
 #adding other SES vars
 att_gtc3 <- att_gt(yname = "fgrade",
@@ -1072,7 +1075,8 @@ att_gtc3 <- att_gt(yname = "fgrade",
                   control.group = "nevertreated",
                   data = dftotal6,
                   bstrap=TRUE,
-                  panel = FALSE)
+                  panel = FALSE,
+                  estMethod = "reg")
 
 #adding regional differences
 att_gtc4 <- att_gt(yname = "fgrade",
@@ -1082,13 +1086,27 @@ att_gtc4 <- att_gt(yname = "fgrade",
                   control.group = "nevertreated",
                   data = dftotal7,
                   bstrap=TRUE,
-                  panel = FALSE)
+                  panel = FALSE,
+                  estMethod = "reg")
 
-summary(att_gt)
-summary(att_gtc1)
-summary(att_gtc2)
-summary(att_gtc3)
-summary(att_gtc4)
+convertMP <- function(x){
+  att <- data.table(Group = x$group, Time = x$t, ATT = x$att)
+  p <- paste(paste("Observarions =",x$n), "Covariates:", paste("P-value for pre-test of parallel trends assumption:",x$Wpval), sep = "\n")
+  xt <- xtable(att,
+            Label = paste(paste("Observations =",x$n), "Covariates: -", paste("P-value for pre-test of parallel trends assumption:",x$Wpval), sep = "\n"),
+            digits = 3,
+            auto = TRUE,
+            caption = "Group-time average treatment effect",
+            type = "latex",
+            label = p)
+  print(xt, include.rownames=FALSE)
+}
+
+convertMP(att_gt)
+convertMP(att_gtc1)
+convertMP(att_gtc2)
+convertMP(att_gtc3)
+convertMP(att_gtc4)
 
 ggdid(att_gt)
 ggdid(att_gtc1)
@@ -1108,12 +1126,25 @@ summary(did.dync2)
 summary(did.dync3)
 summary(did.dync4)
 
-# plot the event study
+
+# Aggregated ATT ----------------------------------------------------------
+
+attd <- data.table(Covariates = c("No Covariates","+ Sex + Age + Age^2 + Roma", "+ Maternal Net Salary", "+ No. Siblings + Maternal Degree + PSI", "+ Region"), 
+                   ATT = c(did.dynuc$overall.att, did.dync1$overall.att, did.dync2$overall.att, did.dync3$overall.att, did.dync4$overall.att), 
+                   se = c(did.dynuc$overall.se, did.dync1$overall.se, did.dync2$overall.se, did.dync3$overall.se, did.dync4$overall.se))
+xtd <- xtable(attd,
+             digits = 3,
+             auto = TRUE,
+             caption = "Aggregated Group-time average treatment effect",
+             type = "latex")
+print(xtd, include.rownames=FALSE)
+
+# Plot event dynamic studies ----------------------------------------------
 
 ggdid(did.dynuc) + 
   geom_smooth(aes(did.dynuc$egt, did.dynuc$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
-  geom_text(aes(x=0.1, label="separation", y=-0.4), colour="red", angle=90, text=element_text(size=11)) +
+  geom_text(aes(x=0.1, label="separation", y=0.2), colour="red", angle=90, text=element_text(size=11)) +
   labs(title = "Parental Separation ~ Final Grade",
        xlab = "Periods",
        ylab = "Change in Final Grade",
@@ -1131,7 +1162,7 @@ ggdid(did.dync1) +
 ggdid(did.dync2) + 
   geom_smooth(aes(did.dync2$egt, did.dync2$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
-  geom_text(aes(x=0.1, label="separation", y=-0.4), colour="red", angle=90, text=element_text(size=11)) +
+  geom_text(aes(x=0.1, label="separation", y=-0.25), colour="red", angle=90, text=element_text(size=11)) +
   labs(title = "Parental Separation ~ Final Grade",
        xlab = "Periods",
        ylab = "Change in Final Grade",
@@ -1140,20 +1171,20 @@ ggdid(did.dync2) +
 ggdid(did.dync3) + 
   geom_smooth(aes(did.dync3$egt, did.dync3$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
-  geom_text(aes(x=0.1, label="separation", y=-0.4), colour="red", angle=90, text=element_text(size=11)) +
+  geom_text(aes(x=0.1, label="separation", y=-0.25), colour="red", angle=90, text=element_text(size=11)) +
   labs(title = "Parental Separation ~ Final Grade",
        xlab = "Periods",
        ylab = "Change in Final Grade",
-       subtitle = "Covariates: Gender + Age + Age^2 + Roma-origin + Maternal Salary + No. Siblings + Maternal Degree + Parental School Involvement")
+       subtitle = paste("Covariates: Gender + Age + Age^2 + Roma-origin + Maternal Salary +", "No. Siblings + Maternal Degree + PSI", sep = "\n"))
 
 ggdid(did.dync4) + 
   geom_smooth(aes(did.dync4$egt, did.dync4$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
-  geom_text(aes(x=0.1, label="separation", y=-0.4), colour="red", angle=90, text=element_text(size=11)) +
+  geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
   labs(title = "Parental Separation ~ Final Grade",
        xlab = "Periods",
        ylab = "Change in Final Grade",
-       subtitle = "Covariates: Gender + Age + Age^2 + Roma-origin + Maternal Salary + No. Siblings + Maternal Degree + Parental School Involvement + Region")
+       subtitle = paste("Covariates: Gender + Age + Age^2 + Roma-origin + Maternal Salary +", "No. Siblings + Maternal Degree + PSI + Region", sep = "\n"))
 
 ###################
 #   END OF CODE   #
