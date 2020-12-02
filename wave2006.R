@@ -1,6 +1,6 @@
 # NFO ---------------------------------------------------------------------
 
-#THESIS Életpálya 2006-2008
+#THESIS Hungarian Life Course Survey 2006-2009
 #Author: Nguyen Nam Son
 #Date: 05-10-2020
 
@@ -71,7 +71,9 @@ df2006 <- df2006_start %>% select(c(year,
                                     af167xxx, 
                                     af190xxx,
                                     af156xxx,
+                                    af157xxx,
                                     af179xxx,
+                                    af180xxx,
                                     af200xxx,
                                     af201xxx,
                                     ad025axx, 
@@ -132,8 +134,10 @@ names(df2006) <- c('year',
                 'mrel',
                 'mnsal',
                 'fnsal',
-                'methnic',
-                'fethnic',
+                'methnic1',
+                'methnic2',
+                'fethnic1',
+                'fethnic2',
                 'wnbrh',
                 'cnbrh',
                 'workdesk',
@@ -185,7 +189,9 @@ df2007 <- df2007_start %>% select(c(year,
                                     b44c,
                                     b58c,
                                     b38,
+                                    b39,
                                     b52,
+                                    b53,
                                     b23,
                                     b24,
                                     b30,
@@ -255,8 +261,10 @@ names(df2007) <- c('year',
                    'sctrip',
                    'mnsal',
                    'fnsal',
-                   'methnic',
-                   'fethnic',
+                   'methnic1',
+                   'methnic2',
+                   'fethnic1',
+                   'fethnic2',
                    'wnbrh',
                    'cnbrh',
                    'internet',
@@ -432,6 +440,7 @@ df2009 <- df2009_start %>% select(c(year,
                                     acsaljov,
                                     d49,
                                     d79,
+                                    d78,
                                     d50,
                                     d50a,
                                     d103,
@@ -480,7 +489,8 @@ names(df2009) <- c('year',
                    'nsib',
                    'pcons',
                    'welf',
-                   'minor',
+                   'ethnic1',
+                   'ethnic2',
                    'faminc',
                    'rfaminc',
                    'fullly',
@@ -555,8 +565,10 @@ df2007$xp <- ifelse((df2007$xpmiss == 1 |
                   df2007$xpother3 == 1), 1, 0)
 
 #merging time invariant variables such as ethnicity and sex
-df2006 <- merge(df2006, df2007[,c("ID", "minor")], by = "ID")
-df2008 <- merge(df2008, df2007[,c("ID", "minor")], by = "ID")
+df2006$roma <- ifelse((df2006$mbio == 1 & (df2006$methnic1 == 7 | df2006$methnic2 == 7)) | (df2006$fbio == 1 & (df2006$fethnic1 == 7 | df2006$fethnic2 == 7)), 1, 0)
+df2007$roma <- ifelse((df2007$mbio == 1 & (df2007$methnic1 == 7 | df2007$methnic2 == 7)) | (df2007$fbio == 1 & (df2007$fethnic1 == 7 | df2007$fethnic2 == 7)), 1, 0)
+df2008 <- merge(df2008, df2007[,c("ID", "roma")], by = "ID")
+df2009$roma <- ifelse(df2009$ethnic1 == 7 | df2009$ethnic2 == 7, 1, 0)
 
 df2006$male <- ifelse(df2006$sex == 1, 1, 0)
 df2007$male <- ifelse(df2007$sex == 1, 1, 0)
@@ -645,19 +657,18 @@ write.table(dropout$proportions, "~/thesis_eletpalya/dropout.txt", sep="\t")
 ctable(df2006$peduc_asp, df2006$nintact, prop = "c", chisq = TRUE, OR = TRUE)
 
 #the lower the better
-mpscinv <- aggregate(df2006[, c("pscinv", "pmeet", "pttalk", "studyparent")],
+mPSCNI <- aggregate(df2006[, c("PSCNI", "pmeet", "pttalk", "studyparent")],
                    list(df2006$nintact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
-write.table(mpscinv, "~/thesis_eletpalya/mpscinv.txt", sep="\t")
+write.table(mPSCNI, "~/thesis_eletpalya/mPSCNI.txt", sep="\t")
 
 #additional parental investments not in home scale
 pinv <- ctable(df2006$pinv, df2006$nintact, prop = "c", chisq = TRUE)
 write.table(pinv$proportions, "~/thesis_eletpalya/pinv.txt", sep="\t")
 
-#minority backround (gypsy)
-minor <- freq(df2006$minor, report.nas = FALSE, 
-              cumul = FALSE, headings = FALSE)
-write.table(minor, "~/thesis_eletpalya/minor.txt", sep="\t")
+#roma
+roma <- ctable(df2006$roma, df2006$nintact, prop = "c", chisq = TRUE)
+write.table(roma$proportions, "~/thesis_eletpalya/roma.txt", sep="\t")
 
 #reason of separation
 divordth <- freq(df2006$divordth, report.nas = FALSE, 
@@ -670,38 +681,82 @@ sepage <- summary(df2006[, c("age_at_sepm", "age_at_sepf")])
 write.table(sepage, "~/thesis_eletpalya/sepage.txt", sep="\t")
 
 # Feature selection----------------------------------------------------
+
 df2006$fgrade <- concatFgrade(df2006, "fgrade", "infgrade", "decfgrade")
 
-flattenCorrMatrix <- function(cormat, pmat) {
-  ut <- upper.tri(cormat)
-  data.frame(
-    row = rownames(cormat)[row(cormat)[ut]],
-    column = rownames(cormat)[col(cormat)[ut]],
-    cor  =(cormat)[ut],
-    p = pmat[ut]
-  )
-}
+# flattenCorrMatrix <- function(cormat, pmat) {
+#   ut <- upper.tri(cormat)
+#   data.frame(
+#     row = rownames(cormat)[row(cormat)[ut]],
+#     column = rownames(cormat)[col(cormat)[ut]],
+#     cor  =(cormat)[ut],
+#     p = pmat[ut]
+#   )
+# }
 
 cormatdf <- df2006[c('fgrade',
                       'mnsal',
                       'fnsal',
                       'pinv',
-                      'pcons',
                       'nsib',
-                      'age_at_sepf',
-                      'homesc',
                       'nschange',
                       'nexp')]
 
-cor <- cormatdf %>% remove_all_labels() %>% cor(use = "complete.obs") %>% round(., 2)
-res1 <- rcorr(as.matrix(cormatdf))
-res2 <- flattenCorrMatrix(res1$r, res1$P) #table form
+# cor <- cormatdf %>% remove_all_labels() %>% cor(use = "complete.obs") %>% round(., 2)
+# res1 <- rcorr(as.matrix(cormatdf))
+# res2 <- flattenCorrMatrix(res1$r, res1$P) #table form
+# 
+# write.table(res2, file = "~/thesis_eletpalya/res2.txt", sep="\t")
+# 
+# # Insignificant correlation are crossed
+# corrplot(res1$r, type="upper", order="hclust", p.mat = res1$P, sig.level = 0.01, tl.col = "black", tl.srt = 45)
+# print(findCorrelation(cor, cutoff = 0.5)) #nothing highly correlates
 
-write.table(res2, file = "~/thesis_eletpalya/res2.txt", sep="\t")
+corstars <-function(x, method=c("pearson", "spearman"), removeTriangle=c("upper", "lower"),
+                    result=c("none", "html", "latex")){
+  #Compute correlation matrix
+  require(Hmisc)
+  x <- as.matrix(x)
+  correlation_matrix<-rcorr(x, type=method[1])
+  R <- correlation_matrix$r # Matrix of correlation coeficients
+  p <- correlation_matrix$P # Matrix of p-value 
+  
+  ## Define notions for significance levels; spacing is important.
+  mystars <- ifelse(p < .0001, "****", ifelse(p < .001, "*** ", ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    "))))
+  
+  ## trunctuate the correlation matrix to two decimal
+  R <- format(round(cbind(rep(-1.11, ncol(x)), R), 2))[,-1]
+  
+  ## build a new matrix that includes the correlations with their apropriate stars
+  Rnew <- matrix(paste(R, mystars, sep=""), ncol=ncol(x))
+  diag(Rnew) <- paste(diag(R), " ", sep="")
+  rownames(Rnew) <- colnames(x)
+  colnames(Rnew) <- paste(colnames(x), "", sep="")
+  
+  ## remove upper triangle of correlation matrix
+  if(removeTriangle[1]=="upper"){
+    Rnew <- as.matrix(Rnew)
+    Rnew[upper.tri(Rnew, diag = TRUE)] <- ""
+    Rnew <- as.data.frame(Rnew)
+  }
+  
+  ## remove lower triangle of correlation matrix
+  else if(removeTriangle[1]=="lower"){
+    Rnew <- as.matrix(Rnew)
+    Rnew[lower.tri(Rnew, diag = TRUE)] <- ""
+    Rnew <- as.data.frame(Rnew)
+  }
+  
+  ## remove last column and return the correlation matrix
+  Rnew <- cbind(Rnew[1:length(Rnew)-1])
+  if (result[1]=="none") return(Rnew)
+  else{
+    if(result[1]=="html") print(xtable(Rnew), type="html")
+    else print(xtable(Rnew), type="latex") 
+  }
+} 
 
-# Insignificant correlation are crossed
-corrplot(res1$r, type="upper", order="hclust", p.mat = res1$P, sig.level = 0.01, tl.col = "black", tl.srt = 45)
-print(findCorrelation(cor, cutoff = 0.5)) #nothing highly correlates
+corstars(cormatdf, "pearson", "upper", "latex")
 
 # Merging waves -------------------------------------------------------
 
@@ -797,7 +852,7 @@ dftotal$nintact <- as.factor(ifelse((dftotal$fbio == 1) & (dftotal$mbio == 1), 0
 dftotal$study <- ifelse(dftotal$full == 5, 0, 1)
 
 #create index for parental school involvement
-dftotal$pscinv <- dftotal$pmeet + dftotal$pttalk
+dftotal$PSCNI <- dftotal$pmeet + dftotal$pttalk
 
 #parental investments
 dftotal$pinv <- dftotal$txtbook + dftotal$transc + dftotal$xtraclass + dftotal$sctrip
@@ -818,15 +873,15 @@ ols_bi <- lm(fgrade ~ nintact, data = dftotal)
 #multivariate pooled OLS regression for final grade
 #sepage and divordeath is not representative (too much NAs)
 
-ols_m1 <- lm(fgrade ~ nintact + mnsal + fnsal + gender + pscinv + pinv + schange, data = dftotal)
+ols_m1 <- lm(fgrade ~ nintact + mnsal + fnsal + gender + PSCNI + pinv + schange, data = dftotal)
 
 #given that it is a intact (non-intact) family
 intact <- subset(dftotal, nintact == 0)
 nintact <- subset(dftotal, nintact == 1)
 
 #ols for disrupted families
-ols_m2 <- lm(fgrade ~ mnsal + fnsal + gender + pscinv + pinv + schange, data = intact)
-ols_m3 <- lm(fgrade ~ mnsal + fnsal + gender + pscinv + pinv + schange + divordth + age_at_sepf, data = nintact)
+ols_m2 <- lm(fgrade ~ mnsal + fnsal + gender + PSCNI + pinv + schange, data = intact)
+ols_m3 <- lm(fgrade ~ mnsal + fnsal + gender + PSCNI + pinv + schange + divordth + age_at_sepf, data = nintact)
 
 stargazer(ols_bi, ols_m1, ols_m2, ols_m3, type = 'text')
 
@@ -1000,7 +1055,7 @@ dftotal2$nintact <- as.factor(ifelse((dftotal2$fbio == 1) & (dftotal2$mbio == 1)
 dftotal2$study <- ifelse(dftotal2$full == 5, 0, 1)
 
 #create index for parental school involvement
-dftotal2$pscinv <- dftotal2$pmeet + dftotal2$pttalk
+dftotal2$PSCNI <- dftotal2$pmeet + dftotal2$pttalk
 
 #parental investments
 dftotal2$pinv <- dftotal2$txtbook + dftotal2$transc + dftotal2$xtraclass + dftotal2$sctrip
@@ -1022,14 +1077,14 @@ dftotal2 <- dftotal2[!(dftotal2$year == 2006 & dftotal2$nintact == 1),]#drop alr
 dftotal3 <- na.omit(dftotal2[,c("ID","year","fgrade","first_treat")])
 dftotal4 <- na.omit(dftotal2[,c("ID","year","male","roma","age","fgrade","first_treat")])
 dftotal5 <- na.omit(dftotal2[,c("ID","year","male","roma","mnsal","age","fgrade","first_treat")])
-dftotal6 <- na.omit(dftotal2[,c("ID","year","male","roma","mdegree","mnsal","nsib","age","fgrade","pscinv","first_treat")])
-dftotal7 <- na.omit(dftotal2[,c("ID","year","male","roma","mdegree","mnsal","nsib","age","region","fgrade","pscinv","first_treat")])
+dftotal6 <- na.omit(dftotal2[,c("ID","year","male","roma","mdegree","mnsal","nsib","age","fgrade","PSCNI","first_treat")])
+dftotal7 <- na.omit(dftotal2[,c("ID","year","male","roma","mdegree","mnsal","nsib","age","region","fgrade","PSCNI","first_treat")])
 
 pre.test <- conditional_did_pretest(yname = "fgrade",
                                     tname = "year",
                                     idname = "ID",
                                     first.treat.name = "first_treat",
-                                    xformla = ~ male + roma + age + age**2 + mnsal + nsib + pscinv + mdegree + region,
+                                    xformla = ~ male + roma + age + age**2 + mnsal + nsib + PSCNI + mdegree + region,
                                     data = dftotal7)
 
 summary(pre.test)
@@ -1071,7 +1126,7 @@ att_gtc2 <- att_gt(yname = "fgrade",
 att_gtc3 <- att_gt(yname = "fgrade",
                   tname = "year",
                   first.treat.name = "first_treat",
-                  xformla = ~ male + roma + age + age**2 + mnsal + nsib + pscinv + mdegree,
+                  xformla = ~ male + roma + age + age**2 + mnsal + nsib + PSCNI + mdegree,
                   control.group = "nevertreated",
                   data = dftotal6,
                   bstrap=TRUE,
@@ -1082,7 +1137,7 @@ att_gtc3 <- att_gt(yname = "fgrade",
 att_gtc4 <- att_gt(yname = "fgrade",
                   tname = "year",
                   first.treat.name = "first_treat",
-                  xformla = ~ male + roma + age + age**2 + mnsal + nsib + pscinv + mdegree + region,
+                  xformla = ~ male + roma + age + age**2 + mnsal + nsib + PSCNI + mdegree + region,
                   control.group = "nevertreated",
                   data = dftotal7,
                   bstrap=TRUE,
