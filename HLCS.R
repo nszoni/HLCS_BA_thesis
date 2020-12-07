@@ -580,6 +580,12 @@ df2006$divordth <- as.factor(ifelse(((df2006$msep_reason == 4) | (df2006$fsep_re
                                  ifelse(((df2006$msep_reason == 6) | (df2006$fsep_reason == 8)), 2, #death
                                         ifelse((df2006$mbio == 1) & (df2006$fbio == 1), NA, 3)))) #other and NA
 
+#whether changed school due to moving last year
+df2006$schange <- 0 #in pre treatment, moving does not ensue
+df2007$schange <- ifelse(df2007$schange1 == 1 | df2007$schange1 == 1, 1, 0)
+df2008$schange <- ifelse(df2008$schange == 1, 1, 0)
+df2009$schange <- ifelse(df2009$schange == 1, 1, 0)
+
 #fixing grade scale
 df2007$grade[df2007$grade == 0] <- NA
 df2008$grade[df2008$grade == 0] <- NA
@@ -657,10 +663,10 @@ write.table(dropout$proportions, "~/thesis_eletpalya/dropout.txt", sep="\t")
 ctable(df2006$peduc_asp, df2006$nintact, prop = "c", chisq = TRUE, OR = TRUE)
 
 #the lower the better
-mPSCNI <- aggregate(df2006[, c("PSCNI", "pmeet", "pttalk", "studyparent")],
+PSI <- aggregate(df2006[, c("PSI", "pmeet", "pttalk", "studyparent")],
                    list(df2006$nintact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
-write.table(mPSCNI, "~/thesis_eletpalya/mPSCNI.txt", sep="\t")
+write.table(PSI, "~/thesis_eletpalya/PSI.txt", sep="\t")
 
 #additional parental investments not in home scale
 pinv <- ctable(df2006$pinv, df2006$nintact, prop = "c", chisq = TRUE)
@@ -764,14 +770,12 @@ vars <- c("ID",
           "year",
           "region",
           "byear",
-          "minor",
+          "roma",
           "male",
           "full",
           "grade",
           "mbio",
-          "mstep",
           "fbio",
-          "fstep",
           "schange",
           "pmeet",
           "pttalk",
@@ -783,7 +787,6 @@ vars <- c("ID",
           "fnsal",
           "wnbrh",
           "cnbrh",
-          "internet",
           "mdegree",
           "fdegree",
           "nsib",
@@ -795,13 +798,14 @@ vars <- c("ID",
           'behav',
           'dilig',
           'intfgrade',
-          'decfgrade',
-          "xp")
+          'decfgrade')
 
 df2006 <- remove_all_labels(df2006)
 df2007 <- remove_all_labels(df2007)
 df2008 <- remove_all_labels(df2008)
 df2009 <- remove_all_labels(df2009)
+
+# TWFE --------------------------------------------------------------------
 
 dftotal <- rbind(df2006[, vars],
                  df2009[, vars])
@@ -852,7 +856,7 @@ dftotal$nintact <- as.factor(ifelse((dftotal$fbio == 1) & (dftotal$mbio == 1), 0
 dftotal$study <- ifelse(dftotal$full == 5, 0, 1)
 
 #create index for parental school involvement
-dftotal$PSCNI <- dftotal$pmeet + dftotal$pttalk
+dftotal$PSI <- dftotal$pmeet + dftotal$pttalk
 
 #parental investments
 dftotal$pinv <- dftotal$txtbook + dftotal$transc + dftotal$xtraclass + dftotal$sctrip
@@ -873,15 +877,15 @@ ols_bi <- lm(fgrade ~ nintact, data = dftotal)
 #multivariate pooled OLS regression for final grade
 #sepage and divordeath is not representative (too much NAs)
 
-ols_m1 <- lm(fgrade ~ nintact + mnsal + fnsal + gender + PSCNI + pinv + schange, data = dftotal)
+ols_m1 <- lm(fgrade ~ nintact + mnsal + fnsal + gender + PSI + pinv + schange, data = dftotal)
 
 #given that it is a intact (non-intact) family
 intact <- subset(dftotal, nintact == 0)
 nintact <- subset(dftotal, nintact == 1)
 
 #ols for disrupted families
-ols_m2 <- lm(fgrade ~ mnsal + fnsal + gender + PSCNI + pinv + schange, data = intact)
-ols_m3 <- lm(fgrade ~ mnsal + fnsal + gender + PSCNI + pinv + schange + divordth + age_at_sepf, data = nintact)
+ols_m2 <- lm(fgrade ~ mnsal + fnsal + gender + PSI + pinv + schange, data = intact)
+ols_m3 <- lm(fgrade ~ mnsal + fnsal + gender + PSI + pinv + schange + divordth + age_at_sepf, data = nintact)
 
 stargazer(ols_bi, ols_m1, ols_m2, ols_m3, type = 'text')
 
@@ -1048,43 +1052,41 @@ dftotal2[,!names(dftotal2) %in% c("grade",
 #create age column
 dftotal2$age <- dftotal2$year - dftotal2$byear
 
-# Family structure dummy
-dftotal2$nintact <- as.factor(ifelse((dftotal2$fbio == 1) & (dftotal2$mbio == 1), 0, 1))
-
 #measure of dropouts as studied or not
 dftotal2$study <- ifelse(dftotal2$full == 5, 0, 1)
 
 #create index for parental school involvement
-dftotal2$PSCNI <- dftotal2$pmeet + dftotal2$pttalk
+dftotal2$PSI <- dftotal2$pmeet + dftotal2$pttalk
 
 #parental investments
 dftotal2$pinv <- dftotal2$txtbook + dftotal2$transc + dftotal2$xtraclass + dftotal2$sctrip
 
-#treating gypsy as minor (dummy)
-dftotal2$roma <- ifelse(dftotal2$minor == 7, 1, 0)
+# DID for upper bound -----------------------------------------------------
+# Family structure dummy (upper-bound estimation)
+dftotal2$nintact <- as.factor(ifelse((dftotal2$fbio == 1) & (dftotal2$mbio == 1), 0, 1))
 
-dftotal2$nintact <- as.numeric(levels(dftotal2$nintact))[dftotal2$nintact]
-first_treat <- aggregate(year ~ ID, data = dftotal2[dftotal2$nintact==1, ], FUN = min)
+dftotal21 <- dftotal2[!(dftotal2$year == 2006 & dftotal2$nintact == 1),]#drop already treated in pretreatment (2006)
+
+dftotal21$nintact <- as.numeric(levels(dftotal21$nintact))[dftotal21$nintact]
+first_treat <- aggregate(year ~ ID, data = dftotal21[dftotal21$nintact==1, ], FUN = min)
 names(first_treat) <- c("ID", "first_treat")
 
-dftotal2 <- dftotal2 %>%
+dftotal21 <- dftotal21 %>%
   left_join(first_treat, by = "ID")
 
-dftotal2$first_treat <- ifelse(is.na(dftotal2$first_treat), 0, dftotal2$first_treat)
+dftotal21$first_treat <- ifelse(is.na(dftotal21$first_treat), 0, dftotal21$first_treat)
 
-dftotal2 <- dftotal2[!(dftotal2$year == 2006 & dftotal2$nintact == 1),]#drop already treated in pretreatment (2006)
-
-dftotal3 <- na.omit(dftotal2[,c("ID","year","fgrade","first_treat")])
-dftotal4 <- na.omit(dftotal2[,c("ID","year","male","roma","age","fgrade","first_treat")])
-dftotal5 <- na.omit(dftotal2[,c("ID","year","male","roma","mnsal","age","fgrade","first_treat")])
-dftotal6 <- na.omit(dftotal2[,c("ID","year","male","roma","mdegree","mnsal","nsib","age","fgrade","PSCNI","first_treat")])
-dftotal7 <- na.omit(dftotal2[,c("ID","year","male","roma","mdegree","mnsal","nsib","age","region","fgrade","PSCNI","first_treat")])
+dftotal3 <- na.omit(dftotal21[,c("ID","year","fgrade","first_treat")])
+dftotal4 <- na.omit(dftotal21[,c("ID","year","male","roma","age","fgrade","first_treat")])
+dftotal5 <- na.omit(dftotal21[,c("ID","year","male","roma","mnsal","age","fgrade","first_treat")])
+dftotal6 <- na.omit(dftotal21[,c("ID","year","male","roma","mdegree","mnsal","nsib","age","fgrade","PSI","first_treat")])
+dftotal7 <- na.omit(dftotal21[,c("ID","year","male","roma","mdegree","mnsal","nsib","age","region","fgrade","PSI","first_treat")])
 
 pre.test <- conditional_did_pretest(yname = "fgrade",
                                     tname = "year",
                                     idname = "ID",
                                     first.treat.name = "first_treat",
-                                    xformla = ~ male + roma + age + age**2 + mnsal + nsib + PSCNI + mdegree + region,
+                                    xformla = ~ male + roma + age + age**2 + mnsal + nsib + PSI + mdegree + region,
                                     data = dftotal7)
 
 summary(pre.test)
@@ -1126,7 +1128,7 @@ att_gtc2 <- att_gt(yname = "fgrade",
 att_gtc3 <- att_gt(yname = "fgrade",
                   tname = "year",
                   first.treat.name = "first_treat",
-                  xformla = ~ male + roma + age + age**2 + mnsal + nsib + PSCNI + mdegree,
+                  xformla = ~ male + roma + age + age**2 + mnsal + nsib + PSI + mdegree,
                   control.group = "nevertreated",
                   data = dftotal6,
                   bstrap=TRUE,
@@ -1137,7 +1139,7 @@ att_gtc3 <- att_gt(yname = "fgrade",
 att_gtc4 <- att_gt(yname = "fgrade",
                   tname = "year",
                   first.treat.name = "first_treat",
-                  xformla = ~ male + roma + age + age**2 + mnsal + nsib + PSCNI + mdegree + region,
+                  xformla = ~ male + roma + age + age**2 + mnsal + nsib + PSI + mdegree + region,
                   control.group = "nevertreated",
                   data = dftotal7,
                   bstrap=TRUE,
@@ -1181,7 +1183,6 @@ summary(did.dync2)
 summary(did.dync3)
 summary(did.dync4)
 
-
 # Aggregated ATT ----------------------------------------------------------
 
 attd <- data.table(Covariates = c("No Covariates","+ Sex + Age + Age^2 + Roma", "+ Maternal Net Salary", "+ No. Siblings + Maternal Degree + PSI", "+ Region"), 
@@ -1190,7 +1191,7 @@ attd <- data.table(Covariates = c("No Covariates","+ Sex + Age + Age^2 + Roma", 
 xtd <- xtable(attd,
              digits = 3,
              auto = TRUE,
-             caption = "Aggregated Group-time average treatment effect",
+             caption = "Upper-bound Aggregated Group-time Average Treatment Effects",
              type = "latex")
 print(xtd, include.rownames=FALSE)
 
@@ -1199,7 +1200,167 @@ print(xtd, include.rownames=FALSE)
 ggdid(did.dynuc) + 
   geom_smooth(aes(did.dynuc$egt, did.dynuc$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
-  geom_text(aes(x=0.1, label="separation", y=0.2), colour="red", angle=90, text=element_text(size=11)) +
+  geom_text(aes(x=0.1, label="separation", y=-0.1), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Parental Separation ~ Final Grade",
+       xlab = "Periods",
+       ylab = "Change in Final Grade",
+       subtitle = "Unconditional Design")
+
+ggdid(did.dync1) + 
+  geom_smooth(aes(did.dync1$egt, did.dync1$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.4), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Parental Separation ~ Final Grade",
+       xlab = "Periods",
+       ylab = "Change in Final Grade",
+       subtitle = "Covariates: Gender + Age + Age^2 + Roma-origin")
+
+ggdid(did.dync2) + 
+  geom_smooth(aes(did.dync2$egt, did.dync2$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.25), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Parental Separation ~ Final Grade",
+       xlab = "Periods",
+       ylab = "Change in Final Grade",
+       subtitle = "Covariates: Gender + Age + Age^2 + Roma-origin + Maternal Salary")
+
+ggdid(did.dync3) + 
+  geom_smooth(aes(did.dync3$egt, did.dync3$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.25), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Parental Separation ~ Final Grade",
+       xlab = "Periods",
+       ylab = "Change in Final Grade",
+       subtitle = paste("Covariates: Gender + Age + Age^2 + Roma-origin + Maternal Salary +", "No. Siblings + Maternal Degree + PSI", sep = "\n"))
+
+ggdid(did.dync4) + 
+  geom_smooth(aes(did.dync4$egt, did.dync4$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Parental Separation ~ Final Grade",
+       xlab = "Periods",
+       ylab = "Change in Final Grade",
+       subtitle = paste("Covariates: Gender + Age + Age^2 + Roma-origin + Maternal Salary +", "No. Siblings + Maternal Degree + PSI + Region", sep = "\n"))
+
+# DID for lower bound -----------------------------------------------------
+dftotal2$nintact2 <- as.factor(ifelse((dftotal2$fbio == 1) & (dftotal2$mbio == 1), 0,
+                                       ifelse(((dftotal2$fbio == 1) & (dftotal2$mbio %in% c(2, NA))) | ((dftotal2$mbio == 1) & (dftotal2$fbio %in% c(2, NA))), 1, NA)))  #single bio family
+
+dftotal22 <- dftotal2[!(dftotal2$year == 2006 & dftotal2$nintact2 == 1),]#drop already treated in pretreatment (2006)
+
+dftotal22$nintact2 <- as.numeric(levels(dftotal22$nintact2))[dftotal22$nintact2]
+first_treat2 <- aggregate(year ~ ID, data = dftotal22[dftotal22$nintact2==1, ], FUN = min)
+names(first_treat2) <- c("ID", "first_treat2")
+
+dftotal22 <- dftotal22 %>%
+  left_join(first_treat2, by = "ID")
+
+dftotal22$first_treat2 <- ifelse(is.na(dftotal22$first_treat2), 0, dftotal22$first_treat2)
+
+dftotal3 <- na.omit(dftotal22[,c("ID","year","fgrade","first_treat2")])
+dftotal4 <- na.omit(dftotal22[,c("ID","year","male","roma","age","fgrade","first_treat2")])
+dftotal5 <- na.omit(dftotal22[,c("ID","year","male","roma","mnsal","age","fgrade","first_treat2")])
+dftotal6 <- na.omit(dftotal22[,c("ID","year","male","roma","mdegree","mnsal","nsib","age","fgrade","PSI","first_treat2")])
+dftotal7 <- na.omit(dftotal22[,c("ID","year","male","roma","mdegree","mnsal","nsib","age","region","fgrade","PSI","first_treat2")])
+
+#unconditional att(g,t)
+att_gt <- att_gt(yname = "fgrade",
+                 tname = "year",
+                 first.treat.name = "first_treat2",
+                 control.group = "nevertreated",
+                 xformla = ~1,
+                 data = dftotal3,
+                 bstrap = TRUE,
+                 panel = FALSE,
+                 estMethod = "reg")
+
+#conditional att(g,t) w/time invariant exogeneous features
+att_gtc1 <- att_gt(yname = "fgrade",
+                   tname = "year",
+                   first.treat.name = "first_treat2",
+                   xformla = ~ male + roma + age + age**2,
+                   control.group = "nevertreated",
+                   data = dftotal4,
+                   bstrap=TRUE,
+                   panel = FALSE,
+                   estMethod = "reg")
+
+#adding income related features
+att_gtc2 <- att_gt(yname = "fgrade",
+                   tname = "year",
+                   first.treat.name = "first_treat2",
+                   xformla = ~ male + roma + age + age**2 + mnsal,
+                   control.group = "nevertreated",
+                   data = dftotal5,
+                   bstrap=TRUE,
+                   panel = FALSE,
+                   estMethod = "reg")
+
+#adding other SES vars
+att_gtc3 <- att_gt(yname = "fgrade",
+                   tname = "year",
+                   first.treat.name = "first_treat2",
+                   xformla = ~ male + roma + age + age**2 + mnsal + nsib + PSI + mdegree,
+                   control.group = "nevertreated",
+                   data = dftotal6,
+                   bstrap=TRUE,
+                   panel = FALSE,
+                   estMethod = "reg")
+
+#adding regional differences
+att_gtc4 <- att_gt(yname = "fgrade",
+                   tname = "year",
+                   first.treat.name = "first_treat2",
+                   xformla = ~ male + roma + age + age**2 + mnsal + nsib + PSI + mdegree + region,
+                   control.group = "nevertreated",
+                   data = dftotal7,
+                   bstrap=TRUE,
+                   panel = FALSE,
+                   estMethod = "reg")
+
+convertMP(att_gt)
+convertMP(att_gtc1)
+convertMP(att_gtc2)
+convertMP(att_gtc3)
+convertMP(att_gtc4)
+
+ggdid(att_gt)
+ggdid(att_gtc1)
+ggdid(att_gtc2)
+ggdid(att_gtc3)
+ggdid(att_gtc4)
+
+did.dynuc <- aggte(att_gt, type="dynamic")
+did.dync1 <- aggte(att_gtc1, type="dynamic")
+did.dync2 <- aggte(att_gtc2, type="dynamic")
+did.dync3 <- aggte(att_gtc3, type="dynamic")
+did.dync4 <- aggte(att_gtc4, type="dynamic")
+
+summary(did.dynuc)
+summary(did.dync1)
+summary(did.dync2)
+summary(did.dync3)
+summary(did.dync4)
+
+
+# Aggregated ATT ----------------------------------------------------------
+
+attd <- data.table(Covariates = c("No Covariates","+ Sex + Age + Age^2 + Roma", "+ Maternal Net Salary", "+ No. Siblings + Maternal Degree + PSI", "+ Region"), 
+                   ATT = c(did.dynuc$overall.att, did.dync1$overall.att, did.dync2$overall.att, did.dync3$overall.att, did.dync4$overall.att), 
+                   se = c(did.dynuc$overall.se, did.dync1$overall.se, did.dync2$overall.se, did.dync3$overall.se, did.dync4$overall.se))
+xtd <- xtable(attd,
+              digits = 3,
+              auto = TRUE,
+              caption = "Lower-bound Aggregated Group-time Average Treatment Effects",
+              type = "latex")
+print(xtd, include.rownames=FALSE)
+
+# Plot event dynamic studies ----------------------------------------------
+
+ggdid(did.dynuc) + 
+  geom_smooth(aes(did.dynuc$egt, did.dynuc$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
   labs(title = "Parental Separation ~ Final Grade",
        xlab = "Periods",
        ylab = "Change in Final Grade",

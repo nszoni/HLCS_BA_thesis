@@ -1,0 +1,3 @@
+"Group.1"	"fgrade"	"math_comp"	"read_comp"	"math"	"gram"	"liter"	"behav"	"dilig"
+"1"	"intact"	3.79	480.93	465.77	3.32	3.53	3.74	4.18	3.85
+"2"	"nintact"	3.61	465.24	452.45	3.08	3.37	3.56	3.98	3.66
