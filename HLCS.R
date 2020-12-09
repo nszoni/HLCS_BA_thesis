@@ -27,6 +27,7 @@ df2006_start <- read_dta("eletpalya_a.dta")
 df2007_start <- read_dta("eletpalya_b.dta")
 df2008_start <- read_dta("eletpalya_c.dta")
 df2009_start <- read_dta("eletpalya_d.dta")
+compscores <- read_dta("okm06-okm08_eletpalya.dta")
 
 df2006_start$year <- 2006
 df2007_start$year <- 2007
