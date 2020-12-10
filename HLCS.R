@@ -20,14 +20,14 @@ pacman::p_load(AER, haven, ggplot2, dplyr,
 
 # devtools::install_github("bcallaway11/did")
 
-wd <- file.path("~", "thesis_eletpalya", "kesz")
+wd <- file.path("~", "HLCS_BA_thesis", "kesz")
 setwd(wd)
 
 df2006_start <- read_dta("eletpalya_a.dta")
 df2007_start <- read_dta("eletpalya_b.dta")
 df2008_start <- read_dta("eletpalya_c.dta")
 df2009_start <- read_dta("eletpalya_d.dta")
-compscores <- read_dta("okm06-okm08_eletpalya.dta")
+compscores08_start <- read_dta("okm06-okm08_eletpalya.dta")
 
 df2006_start$year <- 2006
 df2007_start$year <- 2007
@@ -152,8 +152,8 @@ names(df2006) <- c('year',
                 'nsib',
                 'pcons',
                 'welf',
-                'math_comp',
-                'read_comp',
+                'math_comp06',
+                'read_comp06',
                 'math',
                 'gram',
                 'liter',
@@ -357,7 +357,9 @@ df2008 <- df2008_start %>% select(c(year,
                                   c108,
                                   c144d,
                                   c120,
-                                  c121))
+                                  c121,
+                                  m_zpsc,
+                                  o_zpsc,))
 
 names(df2008) <- c('year',
                    'ID',
@@ -406,7 +408,9 @@ names(df2008) <- c('year',
                    'nadv',
                    'xp',
                    'sclass',
-                   'sclassr')
+                   'sclassr',
+                   'math_comp06',
+                   'read_comp06')
 
 df2009 <- df2009_start %>% select(c(year,
                                     azon,
@@ -507,6 +511,12 @@ names(df2009) <- c('year',
                    'xp',
                    'sclass',
                    'sclassr')
+
+compscores08 <- compscores08_start %>% select(c(azon_06,
+                                                m_zpsc,
+                                                o_zpsc,))
+
+names(compscores08) <- c("ID", "math_comp08", "read_comp08")
 
 # Detailed family structure for 2006 -----------------------------------------------
 
@@ -799,17 +809,20 @@ vars <- c("ID",
           'behav',
           'dilig',
           'intfgrade',
-          'decfgrade')
+          'decfgrade',
+          "math_comp06",
+          "read_comp06")
 
 df2006 <- remove_all_labels(df2006)
 df2007 <- remove_all_labels(df2007)
 df2008 <- remove_all_labels(df2008)
 df2009 <- remove_all_labels(df2009)
+compscores08 <- remove_all_labels(compscores08)
 
-# TWFE --------------------------------------------------------------------
+# VAM (Value Added Model) --------------------------------------------------------------------
 
 dftotal <- rbind(df2006[, vars],
-                 df2009[, vars])
+                 df2008[, vars])
 
 # EDA ---------------------------------------------------------------------
 
@@ -857,14 +870,45 @@ dftotal$nintact <- as.factor(ifelse((dftotal$fbio == 1) & (dftotal$mbio == 1), 0
 dftotal$study <- ifelse(dftotal$full == 5, 0, 1)
 
 #create index for parental school involvement
-dftotal$PSI <- dftotal$pmeet + dftotal$pttalk
+dftotal$PSI <- (dftotal$pmeet + dftotal$pttalk)*(-1)
 
 #parental investments
 dftotal$pinv <- dftotal$txtbook + dftotal$transc + dftotal$xtraclass + dftotal$sctrip
 
-#treating gypsy as minor (dummy)
-dftotal$roma <- ifelse(dftotal$minor == 7, 1, 0)
+#join competence scores of 2008
+dftotal <- inner_join(dftotal, compscores08, by = "ID")
 
+#create categorical indicator of separation period type
+# 0 if never, 1 if between 2006 and 2008, 2 if before 2006
+
+dftotal$nintact <- as.numeric(levels(dftotal$nintact))[dftotal$nintact]
+
+dftotal08 <- dftotal %>%
+  group_by(ID) %>%
+  mutate(sep = as.factor(sum(nintact, na.rm = TRUE)))
+
+dftotal08 <- dftotal08[dftotal08$year == 2008,]
+
+vam <- lm(math_comp08 ~ math_comp06 + factor(sep) + age + male + roma + mnsal + mdegree, data = dftotal08)
+stargazer(vam,
+          title="VAM of Parental Seperation Effect on Math Test Scores",
+          header=FALSE, 
+          digits=3,
+          font.size = "small",
+          align = TRUE,
+          column.sep.width = "0pt",
+          no.space = TRUE,
+          dep.var.labels = "2008 Math 'Competence' Test Score",
+          covariate.labels = c("2006 Score",
+                               "Never separated",
+                               "Separated before 2006",
+                               "Age",
+                               "Male",
+                               "Roma-origin",
+                               "Maternal Net Salary",
+                               "Degree of mother"),
+          type = "text")
+ 
 # TWFE regression ------------------------------------------------------------------
 #!!SUBSET FOR THOSE WHO WHERE IN INTACT FAMILIES IN 2006
 #e.g. reported intact family in Y-1 = 2006, Y1 = 2009, Y0 = somewhere between the two
@@ -1057,7 +1101,7 @@ dftotal2$age <- dftotal2$year - dftotal2$byear
 dftotal2$study <- ifelse(dftotal2$full == 5, 0, 1)
 
 #create index for parental school involvement
-dftotal2$PSI <- dftotal2$pmeet + dftotal2$pttalk
+dftotal2$PSI <- (dftotal2$pmeet + dftotal2$pttalk)*(-1)
 
 #parental investments
 dftotal2$pinv <- dftotal2$txtbook + dftotal2$transc + dftotal2$xtraclass + dftotal2$sctrip
