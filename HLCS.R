@@ -518,6 +518,12 @@ compscores08 <- compscores08_start %>% select(c(azon_06,
 
 names(compscores08) <- c("ID", "math_comp08", "read_comp08")
 
+df2006 <- remove_all_labels(df2006)
+df2007 <- remove_all_labels(df2007)
+df2008 <- remove_all_labels(df2008)
+df2009 <- remove_all_labels(df2009)
+compscores08 <- remove_all_labels(compscores08)
+
 # Detailed family structure for 2006 -----------------------------------------------
 
 attach(df2006)
@@ -813,13 +819,7 @@ vars <- c("ID",
           "math_comp06",
           "read_comp06")
 
-df2006 <- remove_all_labels(df2006)
-df2007 <- remove_all_labels(df2007)
-df2008 <- remove_all_labels(df2008)
-df2009 <- remove_all_labels(df2009)
-compscores08 <- remove_all_labels(compscores08)
-
-# VAM (Value Added Model) --------------------------------------------------------------------
+# VAM (Value Added Model) for Match scores--------------------------------------------------------------------
 
 dftotal <- rbind(df2006[, vars],
                  df2008[, vars])
@@ -836,29 +836,122 @@ dftotal$fgrade <- concatFgrade(dftotal, "fgrade", "infgrade", "decfgrade")
 dftotal <- dftotal[,!(names(dftotal) %in% c("intfgrade", "decfgrade"))]
 
 #Replace missing values with NA
+  dftotal[dftotal == -6 | dftotal == 99 | dftotal == 88 | dftotal == 999 | dftotal == 9999] <- NA
+  dftotal$fgrade[dftotal$fgrade > 5 | dftotal$fgrade < 1] <- NA
+  dftotal[,!names(dftotal) %in% c("grade",
+                                  "age_at_sepf",
+                                  "age_at_sepm",
+                                  "age_at_remf",
+                                  "age_at_remm",
+                                  "mrel",
+                                  "methnic",
+                                  "fethnic",
+                                  "mdegree",
+                                  "fdegree")][dftotal[,!names(dftotal) %in% c("grade",
+                                                                              "age_at_sepf",
+                                                                              "age_at_sepm",
+                                                                              "age_at_remf",
+                                                                              "age_at_remm",
+                                                                              "mrel",
+                                                                              "methnic",
+                                                                              "fethnic",
+                                                                              "mdegree",
+                                                                              "fdegree",
+                                                                              "rfaminc")] == 9 ] <- NA
+  
+  #create age column
+  dftotal$age <- dftotal$year - dftotal$byear
+  
+  # Family structure dummy
+  dftotal$nintact <- as.factor(ifelse((dftotal$fbio == 1) & (dftotal$mbio == 1), 0, 1))
+  
+  #measure of dropouts as studied or not
+  dftotal$study <- ifelse(dftotal$full == 5, 0, 1)
+  
+  #create index for parental school involvement
+  dftotal$PSI <- (dftotal$pmeet + dftotal$pttalk)*(-1)
+  
+  #parental investments
+  dftotal$pinv <- dftotal$txtbook + dftotal$transc + dftotal$xtraclass + dftotal$sctrip
+
+#join competence scores of 2008
+dftotal <- inner_join(dftotal, compscores08, by = "ID")
+
+#create categorical indicator of separation period type
+# 0 if never, 1 if between 2006 and 2008, 2 if before 2006
+
+dftotal$nintact <- as.numeric(levels(dftotal$nintact))[dftotal$nintact]
+
+dftotal08 <- dftotal %>%
+  group_by(ID) %>%
+  mutate(sep = as.factor(sum(nintact, na.rm = TRUE)))
+
+dftotal08 <- dftotal08[dftotal08$year == 2008,]
+
+vam <- lm(math_comp08 ~ match_comp06 + factor(sep) + age + male + roma + mnsal + mdegree, data = dftotal08)
+stargazer(vam,
+          title="VAM of Parental Separation Effect on Match Scores",
+          header=FALSE, 
+          digits=3,
+          font.size = "small",
+          align = TRUE,
+          column.sep.width = "0pt",
+          no.space = TRUE,
+          dep.var.labels = "Math 'Competence' Test Score in 2008",
+          covariate.labels = c("2006 Score",
+                               "Never separated",
+                               "Separated before 2006",
+                               "Age",
+                               "Male",
+                               "Roma-origin",
+                               "Maternal Net Salary",
+                               "Degree of mother"),
+          type = "text")
+
+# VAM (Value Added Model) for Final grades--------------------------------------------------------------------
+vars <- c("ID",
+          "year",
+          "region",
+          "byear",
+          "roma",
+          "male",
+          "full",
+          "grade",
+          "mbio",
+          "fbio",
+          "schange",
+          "pmeet",
+          "pttalk",
+          "txtbook",
+          "transc",
+          "xtraclass",
+          "sctrip",
+          "mnsal",
+          "fnsal",
+          "wnbrh",
+          "cnbrh",
+          "mdegree",
+          "fdegree",
+          "nsib",
+          "pcons",
+          'welf',
+          'math',
+          'gram',
+          'liter',
+          'behav',
+          'dilig',
+          'intfgrade',
+          'decfgrade')
+
+dftotal <- rbind(df2006[, vars],
+                 df2009[, vars])
+
+dftotal$fgrade <- concatFgrade(dftotal, "fgrade", "infgrade", "decfgrade")
+dftotal <- dftotal[,!(names(dftotal) %in% c("intfgrade", "decfgrade"))]
+dftotal$fgrade[dftotal$fgrade > 5 | dftotal$fgrade < 1] <- NA
 
 dftotal[dftotal == -6 | dftotal == 99 | dftotal == 88 | dftotal == 999 | dftotal == 9999] <- NA
-dftotal$fgrade[dftotal$fgrade > 5 | dftotal$fgrade < 1] <- NA
-dftotal[,!names(dftotal) %in% c("grade",
-                                "age_at_sepf",
-                                "age_at_sepm",
-                                "age_at_remf",
-                                "age_at_remm",
-                                "mrel",
-                                "methnic",
-                                "fethnic",
-                                "mdegree",
-                                "fdegree")][dftotal[,!names(dftotal) %in% c("grade",
-                                                                            "age_at_sepf",
-                                                                            "age_at_sepm",
-                                                                            "age_at_remf",
-                                                                            "age_at_remm",
-                                                                            "mrel",
-                                                                            "methnic",
-                                                                            "fethnic",
-                                                                            "mdegree",
-                                                                            "fdegree",
-                                                                            "rfaminc")] == 9 ] <- NA
+dftotal[,!names(dftotal) %in% c("mdegree")][dftotal[,!names(dftotal) %in% c("mdegree")] == 9 ] <- NA
 
 #create age column
 dftotal$age <- dftotal$year - dftotal$byear
@@ -875,39 +968,39 @@ dftotal$PSI <- (dftotal$pmeet + dftotal$pttalk)*(-1)
 #parental investments
 dftotal$pinv <- dftotal$txtbook + dftotal$transc + dftotal$xtraclass + dftotal$sctrip
 
-#join competence scores of 2008
-dftotal <- inner_join(dftotal, compscores08, by = "ID")
-
-#create categorical indicator of separation period type
-# 0 if never, 1 if between 2006 and 2008, 2 if before 2006
-
 dftotal$nintact <- as.numeric(levels(dftotal$nintact))[dftotal$nintact]
 
-dftotal08 <- dftotal %>%
+dftotal <- dftotal %>%
   group_by(ID) %>%
   mutate(sep = as.factor(sum(nintact, na.rm = TRUE)))
 
-dftotal08 <- dftotal08[dftotal08$year == 2008,]
+df2006$fgrade <- as.numeric(paste(df2006$intfgrade, df2006$decfgrade, sep = "."))
+df2006$fgrade[df2006$fgrade > 5 | df2006$fgrade < 1] <- NA
 
-vam <- lm(math_comp08 ~ math_comp06 + factor(sep) + age + male + roma + mnsal + mdegree, data = dftotal08)
+dftotal <- inner_join(dftotal, df2006[, c("ID", "fgrade")], by = "ID")
+
+dftotal <- dftotal[dftotal$year == 2009,]
+
+names(dftotal)[names(dftotal) == 'fgrade.x'] <- 'fgrade09'
+names(dftotal)[names(dftotal) == 'fgrade.y'] <- 'fgrade06'
+
+vam <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male  + mnsal + mdegree, data = dftotal)
 stargazer(vam,
-          title="VAM of Parental Seperation Effect on Math Test Scores",
+          title="VAM of Parental Separation Effect on Final Grades",
           header=FALSE, 
           digits=3,
           font.size = "small",
           align = TRUE,
           column.sep.width = "0pt",
           no.space = TRUE,
-          dep.var.labels = "2008 Math 'Competence' Test Score",
-          covariate.labels = c("2006 Score",
-                               "Never separated",
-                               "Separated before 2006",
-                               "Age",
-                               "Male",
-                               "Roma-origin",
-                               "Maternal Net Salary",
-                               "Degree of mother"),
-          type = "text")
+          dep.var.labels = "Final Grade in 2009",
+          covariate.labels = c("Final Grade in 2006",
+                                "Separated between 2006 and 2008",
+                                "Separated before 2006",
+                                "Male",
+                                "Maternal Net Salary",
+                                "Degree of mother"),
+          type = "latex")
  
 # TWFE regression ------------------------------------------------------------------
 #!!SUBSET FOR THOSE WHO WHERE IN INTACT FAMILIES IN 2006
