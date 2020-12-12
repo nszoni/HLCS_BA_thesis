@@ -40,6 +40,9 @@ df2006 <- df2006_start %>% select(c(year,
                                     azon,
                                     regio,
                                     af087xxx,
+                                    af123xxx,
+                                    af088xxx,
+                                    af092axx,
                                     af093xxx,
                                     af095xxx,
                                     af096xxx,
@@ -103,7 +106,10 @@ df2006 <- df2006_start %>% select(c(year,
 names(df2006) <- c('year',
                 'ID',
                 'region',
-                'full',
+                'full1',
+                'full2',
+                'maint',
+                'sctype',
                 'grade',
                 'samesc',
                 'nsamew',
@@ -170,6 +176,8 @@ df2007 <- df2007_start %>% select(c(year,
                                     bl01szul,
                                     bl01neme,
                                     b83,
+                                    b85,
+                                    b87,
                                     b88,
                                     b3,
                                     b5,
@@ -243,6 +251,8 @@ names(df2007) <- c('year',
                    'byear',
                    'sex',
                    'full',
+                   'maint',
+                   'sctype',
                    'grade',
                    'mbio',
                    'samembio',
@@ -316,7 +326,9 @@ df2008 <- df2008_start %>% select(c(year,
                                   cl01szul,
                                   cl01neme,
                                   c73,
+                                  c75,
                                   c77,
+                                  c80,
                                   c3,
                                   c4,
                                   c7,
@@ -367,7 +379,9 @@ names(df2008) <- c('year',
                    'byear',
                    'sex',
                    'full',
+                   'maint',
                    'grade',
+                   'sctype',
                    'mbio',
                    'samembio',
                    'mstep',
@@ -418,7 +432,9 @@ df2009 <- df2009_start %>% select(c(year,
                                     dl01szul,
                                     dl01neme,
                                     d81,
+                                    d83,
                                     d85,
+                                    d88,
                                     d3,
                                     d4,
                                     d7,
@@ -468,7 +484,9 @@ names(df2009) <- c('year',
                    'byear',
                    'sex',
                    'full',
+                   'maint',
                    'grade',
+                   'sctype',
                    'mbio',
                    'samembio',
                    'mstep',
@@ -546,6 +564,8 @@ df2006$pinv <- df2006$txtbook + df2006$transc + df2006$xtraclass + df2006$sctrip
 detach(df2006)
 
 # Unifying differences before union -----------------------------------------
+#fixing department type for 2006
+df2006$full <- ifelse(df2006$full1 == 1, df2006$full1, df2006$full2)
 
 #number of school changes due to moving before 2006
 df2006_temp <- df2006[, names(df2006) %in% c('rschange1', 'rschange2', 'rschange3', 'rschange4')]
@@ -610,7 +630,9 @@ df2009$grade[df2009$grade == 0] <- NA
 df2006$grade[df2006$grade == 9] <- NA
 df2006$grade[df2006$grade == 1] <- 8
 df2006$grade[df2006$grade == 2] <- 9
-df2006$grade[df2006$grade == 0] <- NA
+df2006$grade[df2006$grade == 3] <- NA
+df2006$grade[df2006$grade == 4] <- NA
+df2006$sctype[df2006$sctype == 8] <- NA
 
 # Mean tables across family structures for starting year of 2006 ------------------------------------
 
@@ -916,7 +938,9 @@ vars <- c("ID",
           "roma",
           "male",
           "full",
+          "sctype",
           "grade",
+          "maint",
           "mbio",
           "fbio",
           "schange",
@@ -951,7 +975,7 @@ dftotal <- dftotal[,!(names(dftotal) %in% c("intfgrade", "decfgrade"))]
 dftotal$fgrade[dftotal$fgrade > 5 | dftotal$fgrade < 1] <- NA
 
 dftotal[dftotal == -6 | dftotal == 99 | dftotal == 88 | dftotal == 999 | dftotal == 9999] <- NA
-dftotal[,!names(dftotal) %in% c("mdegree")][dftotal[,!names(dftotal) %in% c("mdegree")] == 9 ] <- NA
+dftotal[,!names(dftotal) %in% c("mdegree", "grade")][dftotal[,!names(dftotal) %in% c("mdegree", "grade")] == 9 ] <- NA
 
 #create age column
 dftotal$age <- dftotal$year - dftotal$byear
@@ -984,7 +1008,7 @@ dftotal <- dftotal[dftotal$year == 2009,]
 names(dftotal)[names(dftotal) == 'fgrade.x'] <- 'fgrade09'
 names(dftotal)[names(dftotal) == 'fgrade.y'] <- 'fgrade06'
 
-vam <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male  + mnsal + mdegree, data = dftotal)
+vam <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + mdegree + factor(sctype) + relevel(factor(maint), ref = "3") + grade, data = dftotal)
 stargazer(vam,
           title="VAM of Parental Separation Effect on Final Grades",
           header=FALSE, 
@@ -995,11 +1019,21 @@ stargazer(vam,
           no.space = TRUE,
           dep.var.labels = "Final Grade in 2009",
           covariate.labels = c("Final Grade in 2006",
-                                "Separated between 2006 and 2008",
-                                "Separated before 2006",
-                                "Male",
-                                "Maternal Net Salary",
-                                "Degree of mother"),
+                               "Separated between 2006 and 2008",
+                               "Separated before 2006",
+                               "Male",
+                               "Roma-origin",
+                               "Degree of mother",
+                               "Vocational High School",
+                               "4-year High School",
+                               "6-year High School",
+                               "8-year High School",
+                               "Other type of schools",
+                               "State maintained",
+                               "Church maintained",
+                               "School Grade"
+                               ),
+          column.labels = c("with student and school characteristics"),
           type = "latex")
  
 # TWFE regression ------------------------------------------------------------------
