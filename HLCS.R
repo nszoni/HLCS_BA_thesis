@@ -1000,16 +1000,21 @@ dftotal <- dftotal %>%
 
 df2006$fgrade <- as.numeric(paste(df2006$intfgrade, df2006$decfgrade, sep = "."))
 df2006$fgrade[df2006$fgrade > 5 | df2006$fgrade < 1] <- NA
+df2006$math[df2006$math > 5 | df2006$math < 1] <- NA
 
-dftotal <- inner_join(dftotal, df2006[, c("ID", "fgrade")], by = "ID")
+dftotal <- inner_join(dftotal, df2006[, c("ID", "fgrade", "math")], by = "ID")
 
 dftotal <- dftotal[dftotal$year == 2009,]
 
 names(dftotal)[names(dftotal) == 'fgrade.x'] <- 'fgrade09'
 names(dftotal)[names(dftotal) == 'fgrade.y'] <- 'fgrade06'
+names(dftotal)[names(dftotal) == 'math.x'] <- 'math09'
+names(dftotal)[names(dftotal) == 'math.y'] <- 'math06'
 
 vam <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + mdegree + factor(sctype) + relevel(factor(maint), ref = "3") + grade, data = dftotal)
-stargazer(vam,
+vam2 <- lm(math09 ~ math06 + relevel(sep, ref = "0") + male + roma + mdegree + factor(sctype) + relevel(factor(maint), ref = "3") + grade, data = dftotal)
+
+stargazer(vam,vam2,
           title="VAM of Parental Separation Effect on Final Grades",
           header=FALSE, 
           digits=3,
@@ -1017,24 +1022,24 @@ stargazer(vam,
           align = TRUE,
           column.sep.width = "0pt",
           no.space = TRUE,
-          dep.var.labels = "Final Grade in 2009",
-          covariate.labels = c("Final Grade in 2006",
-                               "Separated between 2006 and 2008",
-                               "Separated before 2006",
-                               "Male",
-                               "Roma-origin",
-                               "Degree of mother",
-                               "Vocational High School",
-                               "4-year High School",
-                               "6-year High School",
-                               "8-year High School",
-                               "Other type of schools",
-                               "State maintained",
-                               "Church maintained",
-                               "School Grade"
-                               ),
+          dep.var.labels = c("Final Grade in 2009", "Math Grade in 2009"),
+          # covariate.labels = c("Final Grade in 2006",
+          #                      "Separated between 2006 and 2008",
+          #                      "Separated before 2006",
+          #                      "Male",
+          #                      "Roma-origin",
+          #                      "Degree of mother",
+          #                      "Vocational High School",
+          #                      "4-year High School",
+          #                      "6-year High School",
+          #                      "8-year High School",
+          #                      "Other type of schools",
+          #                      "State maintained",
+          #                      "Church maintained",
+          #                      "School Grade"
+          #                      ),
           column.labels = c("with student and school characteristics"),
-          type = "latex")
+          type = "text")
  
 # TWFE regression ------------------------------------------------------------------
 #!!SUBSET FOR THOSE WHO WHERE IN INTACT FAMILIES IN 2006
@@ -1236,6 +1241,7 @@ dftotal2 <- dftotal2[,!(names(dftotal2) %in% c("intfgrade", "decfgrade"))]
 
 dftotal2[dftotal2 == -6 | dftotal2 == 99 | dftotal2 == 88 | dftotal2 == 999 | dftotal2 == 9999] <- NA
 dftotal2$fgrade[dftotal2$fgrade > 5 | dftotal2$fgrade < 1] <- NA
+dftotal2$math[dftotal2$math > 5 | dftotal2$math < 1] <- NA
 dftotal2[,!names(dftotal2) %in% c("grade",
                                 "mdegree")][dftotal2[,!names(dftotal2) %in% c("grade",
                                                                             "mdegree")] == 9 ] <- NA
@@ -1378,8 +1384,6 @@ ggdid(did.dynuc) +
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.1), colour="red", angle=90, text=element_text(size=11)) +
   labs(title = "Parental Separation ~ Final Grade",
-       xlab = "Periods",
-       ylab = "Change in Final Grade",
        subtitle = "Unconditional Design")
 
 ggdid(did.dync1) + 
@@ -1387,8 +1391,6 @@ ggdid(did.dync1) +
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.4), colour="red", angle=90, text=element_text(size=11)) +
   labs(title = "Parental Separation ~ Final Grade",
-       xlab = "Periods",
-       ylab = "Change in Final Grade",
        subtitle = "Covariates: Gender + Age + Age^2 + Roma-origin")
 
 ggdid(did.dync2) + 
@@ -1396,8 +1398,6 @@ ggdid(did.dync2) +
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.25), colour="red", angle=90, text=element_text(size=11)) +
   labs(title = "Parental Separation ~ Final Grade",
-       xlab = "Periods",
-       ylab = "Change in Final Grade",
        subtitle = paste("Covariates: Gender + Age + Age^2 + Roma-origin + Maternal Salary +", "No. Siblings + PSI", sep = "\n"))
 
 ggdid(did.dync3) + 
@@ -1405,8 +1405,6 @@ ggdid(did.dync3) +
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
   labs(title = "Parental Separation ~ Final Grade",
-       xlab = "Periods",
-       ylab = "Change in Final Grade",
        subtitle = paste("Covariates: Gender + Age + Age^2 + Roma-origin + Maternal Salary +", "No. Siblings + PSI + Region + School Type + Maintainer", sep = "\n"))
 
 # DID for lower bound -----------------------------------------------------
@@ -1513,8 +1511,6 @@ ggdid(did.dynuc) +
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.1), colour="red", angle=90, text=element_text(size=11)) +
   labs(title = "Parental Separation ~ Final Grade",
-       xlab = "Periods",
-       ylab = "Change in Final Grade",
        subtitle = "Unconditional Design")
 
 ggdid(did.dync1) + 
@@ -1522,8 +1518,6 @@ ggdid(did.dync1) +
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.4), colour="red", angle=90, text=element_text(size=11)) +
   labs(title = "Parental Separation ~ Final Grade",
-       xlab = "Periods",
-       ylab = "Change in Final Grade",
        subtitle = "Covariates: Gender + Age + Age^2 + Roma-origin")
 
 ggdid(did.dync2) + 
@@ -1531,8 +1525,6 @@ ggdid(did.dync2) +
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.25), colour="red", angle=90, text=element_text(size=11)) +
   labs(title = "Parental Separation ~ Final Grade",
-       xlab = "Periods",
-       ylab = "Change in Final Grade",
        subtitle = paste("Covariates: Gender + Age + Age^2 + Roma-origin + Maternal Salary +", "No. Siblings + PSI", sep = "\n"))
 
 ggdid(did.dync3) + 
@@ -1540,10 +1532,123 @@ ggdid(did.dync3) +
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
   labs(title = "Parental Separation ~ Final Grade",
-       xlab = "Periods",
-       ylab = "Change in Final Grade",
        subtitle = paste("Covariates: Gender + Age + Age^2 + Roma-origin + Maternal Salary +", "No. Siblings + PSI + Region + School Type + Maintainer", sep = "\n"))
 
+# Additional Results for Math ---------------------------------------------
+
+dftotal3 <- na.omit(dftotal22[,c("ID","year","math","first_treat2")])
+dftotal4 <- na.omit(dftotal22[,c("ID","year","male","roma","age","math","first_treat2")])
+dftotal5 <- na.omit(dftotal22[,c("ID","year","male","roma","mdegree","mnsal","nsib","age","math","PSI","first_treat2")])
+dftotal6 <- na.omit(dftotal22[,c("ID","year","male","roma","mdegree","mnsal","nsib","age","region","math","PSI","maint","sctype","first_treat2")])
+
+#unconditional att(g,t)
+att_gt <- att_gt(yname = "math",
+                 tname = "year",
+                 first.treat.name = "first_treat2",
+                 control.group = "nevertreated",
+                 xformla = ~1,
+                 data = dftotal3,
+                 bstrap = TRUE,
+                 panel = FALSE,
+                 estMethod = "reg")
+
+#conditional att(g,t) w/time invariant exogeneous features
+att_gtc1 <- att_gt(yname = "math",
+                   tname = "year",
+                   first.treat.name = "first_treat2",
+                   xformla = ~ male + roma + age + age**2,
+                   control.group = "nevertreated",
+                   data = dftotal4,
+                   bstrap=TRUE,
+                   panel = FALSE,
+                   estMethod = "reg")
+
+#adding other SES vars
+att_gtc2 <- att_gt(yname = "math",
+                   tname = "year",
+                   first.treat.name = "first_treat2",
+                   xformla = ~ male + roma + age + age**2 + mnsal + nsib + PSI,
+                   control.group = "nevertreated",
+                   data = dftotal5,
+                   bstrap=TRUE,
+                   panel = FALSE,
+                   estMethod = "reg")
+
+#adding regional differences
+att_gtc3 <- att_gt(yname = "math",
+                   tname = "year",
+                   first.treat.name = "first_treat2",
+                   xformla = ~ male + roma + age + age**2 + mnsal + nsib + PSI + region + sctype + maint,
+                   control.group = "nevertreated",
+                   data = dftotal6,
+                   bstrap=TRUE,
+                   panel = FALSE,
+                   estMethod = "reg")
+
+convertMP(att_gt)
+convertMP(att_gtc1)
+convertMP(att_gtc2)
+convertMP(att_gtc3)
+
+ggdid(att_gt)
+ggdid(att_gtc1)
+ggdid(att_gtc2)
+ggdid(att_gtc3)
+
+did.dynuc <- aggte(att_gt, type="dynamic")
+did.dync1 <- aggte(att_gtc1, type="dynamic")
+did.dync2 <- aggte(att_gtc2, type="dynamic")
+did.dync3 <- aggte(att_gtc3, type="dynamic")
+
+summary(did.dynuc)
+summary(did.dync1)
+summary(did.dync2)
+summary(did.dync3)
+
+# Aggregated ATT ----------------------------------------------------------
+
+attd <- data.table(Covariates = c("No Covariates","+ Student Characteristics", "+ SES Variables", "+ School Characteristics"), 
+                   ATT = c(did.dynuc$overall.att, did.dync1$overall.att, did.dync2$overall.att, did.dync3$overall.att), 
+                   se = c(did.dynuc$overall.se, did.dync1$overall.se, did.dync2$overall.se, did.dync3$overall.se),
+                   PTA = c(att_gt$Wpval, att_gtc1$Wpval, att_gtc2$Wpval, att_gtc3$Wpval))
+xtd <- xtable(attd,
+              digits = 3,
+              auto = TRUE,
+              caption = "Lower-bound Aggregated Group-time Average Treatment Effects",
+              type = "latex")
+print(xtd, include.rownames=FALSE)
+
+# Plot event dynamic studies ----------------------------------------------
+
+ggdid(did.dynuc) + 
+  geom_smooth(aes(did.dynuc$egt, did.dynuc$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.1), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Parental Separation ~ Math Grade",
+       subtitle = "Unconditional Design")
+
+ggdid(did.dync1) + 
+  geom_smooth(aes(did.dync1$egt, did.dync1$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.4), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Parental Separation ~ Math Grade",
+       xlab = "Periods",
+       ylab = "Change in Math Grade",
+       subtitle = "Covariates: Gender + Age + Age^2 + Roma-origin")
+
+ggdid(did.dync2) + 
+  geom_smooth(aes(did.dync2$egt, did.dync2$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.25), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Parental Separation ~ Math Grade",
+       subtitle = paste("Covariates: Gender + Age + Age^2 + Roma-origin + Maternal Salary +", "No. Siblings + PSI", sep = "\n"))
+
+ggdid(did.dync3) + 
+  geom_smooth(aes(did.dync3$egt, did.dync3$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Parental Separation ~ Math Grade",
+       subtitle = paste("Covariates: Gender + Age + Age^2 + Roma-origin + Maternal Salary +", "No. Siblings + PSI + Region + School Type + Maintainer", sep = "\n"))
 
 ###################
 #   END OF CODE   #
