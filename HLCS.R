@@ -103,7 +103,12 @@ df2006 <- df2006_start %>% select(c(year,
                                     af071xxx,
                                     af072xxx,
                                     af023xxx,
-                                    ad028xxx))
+                                    ad028xxx,
+                                    af205xxx,
+                                    aekor03,
+                                    aekor46,
+                                    aekor714,
+                                    aekor151))
 
 names(df2006) <- c('year',
                 'ID',
@@ -172,7 +177,12 @@ names(df2006) <- c('year',
                 'rep4',
                 'rep58',
                 'brthw',
-                'hstat')
+                'hstat',
+                'hsqm',
+                'ekor03',
+                'ekor46',
+                'ekor714',
+                'ekor151')
 
 df2007 <- df2007_start %>% select(c(year,
                                     azon,
@@ -249,7 +259,12 @@ df2007 <- df2007_start %>% select(c(year,
                                     b163i,
                                     b163o,
                                     b163q,
-                                    b163t))
+                                    b163t,
+                                    b28,
+                                    bekor03,
+                                    bekor46,
+                                    bekor714,
+                                    bekor151))
 
 names(df2007) <- c('year',
                    'ID',
@@ -326,7 +341,12 @@ names(df2007) <- c('year',
                    'dpoutmot',
                    'dpoutdiv',
                    'dpoutwrk',
-                   'dpoutind')
+                   'dpoutind',
+                   'hsqm',
+                   'ekor03',
+                   'ekor46',
+                   'ekor714',
+                   'ekor151')
 
 df2008 <- df2008_start %>% select(c(year,
                                   azon,
@@ -380,7 +400,12 @@ df2008 <- df2008_start %>% select(c(year,
                                   c121,
                                   m_zpsc,
                                   o_zpsc,
-                                  c198))
+                                  c198,
+                                  c24,
+                                  cekor03,
+                                  cekor46,
+                                  cekor714,
+                                  cekor151))
 
 names(df2008) <- c('year',
                    'ID',
@@ -434,7 +459,12 @@ names(df2008) <- c('year',
                    'sclassr',
                    'math_comp06',
                    'read_comp06',
-                   'hstat')
+                   'hstat',
+                   'hsqm',
+                   'ekor03',
+                   'ekor46',
+                   'ekor714',
+                   'ekor151')
 
 df2009 <- df2009_start %>% select(c(year,
                                     azon,
@@ -487,7 +517,12 @@ df2009 <- df2009_start %>% select(c(year,
                                     d145d,
                                     d128,
                                     d129,
-                                    d188))
+                                    d188,
+                                    d24,
+                                    dekor03,
+                                    dekor46,
+                                    dekor714,
+                                    dekor151))
 
 names(df2009) <- c('year',
                    'ID',
@@ -540,7 +575,12 @@ names(df2009) <- c('year',
                    'xp',
                    'sclass',
                    'sclassr',
-                   'hstat')
+                   'hstat',
+                   'hsqm',
+                   'ekor03',
+                   'ekor46',
+                   'ekor714',
+                   'ekor151')
 
 compscores08 <- compscores08_start %>% select(c(azon_06,
                                                 m_zpsc,
@@ -579,11 +619,10 @@ detach(df2006)
 #fixing department type for 2006
 df2006$full <- ifelse(df2006$full1 == 1, df2006$full1, df2006$full2)
 
-#number of school changes due to moving before 2006
+#number of school changes due to moving before 2006 ~ mobility rate
 df2006_temp <- df2006[, names(df2006) %in% c('rschange1', 'rschange2', 'rschange3', 'rschange4')]
 df2006_temp$nschange <- apply(df2006_temp, 1, function(x) length(which(x == 2)))
 df2006$nschange <- df2006_temp$nschange
-df2006$schange <- 0
 
 #school changes due to movement between observed years
 df2007$schange <- ifelse(df2007$schange1 == 1 | df2007$schange2 == 1, 1, 0)
@@ -651,11 +690,10 @@ df2006$grade[df2006$grade == 3] <- NA
 df2006$grade[df2006$grade == 4] <- NA
 df2006$sctype[df2006$sctype == 8] <- NA
 
-#health features
-df2007 <- merge(df2007, df2006[,c("ID", "brthw", "hstat")], by = "ID")
-df2008 <- merge(df2008, df2006[,c("ID", "brthw")], by = "ID")
-df2009 <- merge(df2009, df2006[,c("ID", "brthw")], by = "ID")
-
+#health features and homesc
+df2007 <- merge(df2007, df2006[,c("ID", "brthw", "hstat", "homesc", "nschange")], by = "ID")
+df2008 <- merge(df2008, df2006[,c("ID", "brthw", "homesc", "nschange")], by = "ID")
+df2009 <- merge(df2009, df2006[,c("ID", "brthw", "homesc", "nschange")], by = "ID")
 
 # Mean tables across family structures for starting year of 2006 ------------------------------------
 
@@ -750,7 +788,16 @@ write.table(sepage, "~/thesis_eletpalya/sepage.txt", sep="\t")
 
 # Feature selection----------------------------------------------------
 
+df2006[df2006 == -6 | df2006 == 99 | df2006 == 88 | df2006 == 999 | df2006 == 9999] <- NA
+df2006[,!names(df2006) %in% c("mdegree", "grade",'ekor03','ekor46','ekor714','ekor151','lhincome')][df2006[,!names(df2006) %in% c("mdegree", "grade",'ekor03','ekor46','ekor714','ekor151','lhincome')] == 9 ] <- NA
+df2006$mnsal[is.na(df2006$mnsal)] <- 0
+df2006$fnsal[is.na(df2006$fnsal)] <- 0
+df2006$lhincome <- log(df2006$mnsal + df2006$fnsal)
+df2006$lhincome[df2006$lhincome == -Inf] <- NA
+df2006$nmin <- df2006$ekor03 + df2006$ekor46 + df2006$ekor714 + df2006$ekor151
 df2006$fgrade <- concatFgrade(df2006, "fgrade", "infgrade", "decfgrade")
+df2006 <- df2006[,!(names(df2006) %in% c("intfgrade", "decfgrade"))]
+df2006$fgrade[df2006$fgrade > 5 | df2006$fgrade < 1] <- NA
 
 # flattenCorrMatrix <- function(cormat, pmat) {
 #   ut <- upper.tri(cormat)
@@ -763,13 +810,12 @@ df2006$fgrade <- concatFgrade(df2006, "fgrade", "infgrade", "decfgrade")
 # }
 
 cormatdf <- df2006[c('fgrade',
-                      'mnsal',
-                      'fnsal',
-                      'pinv',
-                      'nsib',
-                      'nschange',
-                      'nexp',
-                      'brthw')]
+                     'lhincome',
+                     'homesc',
+                     'nmin',
+                     'pinv',
+                     'nschange',
+                     'brthw')]
 
 # cor <- cormatdf %>% remove_all_labels() %>% cor(use = "complete.obs") %>% round(., 2)
 # res1 <- rcorr(as.matrix(cormatdf))
@@ -840,7 +886,7 @@ vars <- c("ID",
           "maint",
           "mbio",
           "fbio",
-          "schange",
+          "nschange",
           "pmeet",
           "pttalk",
           "txtbook",
@@ -865,7 +911,13 @@ vars <- c("ID",
           'decfgrade',
           'death',
           'brthw',
-          'hstat')
+          'hstat',
+          'homesc',
+          'hsqm',
+          'ekor03',
+          'ekor46',
+          'ekor714',
+          'ekor151')
 
 dftotal <- rbind(df2006[, vars],
                  df2009[, vars])
@@ -875,7 +927,7 @@ dftotal <- dftotal[,!(names(dftotal) %in% c("intfgrade", "decfgrade"))]
 dftotal$fgrade[dftotal$fgrade > 5 | dftotal$fgrade < 1] <- NA
 
 dftotal[dftotal == -6 | dftotal == 99 | dftotal == 88 | dftotal == 999 | dftotal == 9999] <- NA
-dftotal[,!names(dftotal) %in% c("mdegree", "grade")][dftotal[,!names(dftotal) %in% c("mdegree", "grade")] == 9 ] <- NA
+dftotal[,!names(dftotal) %in% c("mdegree", "grade",'ekor03','ekor46','ekor714','ekor151','lhincome')][dftotal[,!names(dftotal) %in% c("mdegree", "grade",'ekor03','ekor46','ekor714','ekor151','lhincome')] == 9 ] <- NA
 
 #low birthweight
 dftotal$lbrthw <- ifelse(dftotal$brthw < 2500, 1, 0) 
@@ -892,7 +944,19 @@ dftotal$study <- ifelse(dftotal$full == 5, 0, 1)
 #create index for parental school involvement
 dftotal$PSI <- (dftotal$pmeet + dftotal$pttalk)*(-1)
 
-#parental investments
+#log household income
+dftotal$mnsal[is.na(dftotal$mnsal)] <- 0
+dftotal$fnsal[is.na(dftotal$fnsal)] <- 0
+dftotal$lhincome <- log(dftotal$mnsal + dftotal$fnsal)
+dftotal$lhincome[dftotal$lhincome == -Inf] <- NA
+
+#apartment sqm / minors in household
+dftotal$nmin <- dftotal$ekor03 + dftotal$ekor46 + dftotal$ekor714 + dftotal$ekor151
+dftotal$sqmpm <- dftotal$hsqm/dftotal$nmin
+dftotal$sqmpm[dftotal$sqmpm == Inf] <- NA
+#too much missing values in house parameters (2008-2009)
+
+#parental school investments
 dftotal$pinv <- dftotal$txtbook + dftotal$transc + dftotal$xtraclass + dftotal$sctrip
 
 dftotal$nintact <- as.numeric(levels(dftotal$nintact))[dftotal$nintact]
@@ -911,32 +975,37 @@ dftotal <- dftotal[dftotal$year == 2009,]
 
 names(dftotal)[names(dftotal) == 'fgrade.x'] <- 'fgrade09'
 names(dftotal)[names(dftotal) == 'fgrade.y'] <- 'fgrade06'
-names(dftotal)[names(dftotal) == 'math.x'] <- 'math09'
-names(dftotal)[names(dftotal) == 'math.y'] <- 'math06'
+# names(dftotal)[names(dftotal) == 'math.x'] <- 'math09'
+# names(dftotal)[names(dftotal) == 'math.y'] <- 'math06'
 
 vam1 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0"), data = dftotal)
-vam2 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age, data = dftotal)
-vam3 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + mdegree + mnsal, data = dftotal)
-vam4 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + mdegree + factor(sctype) + relevel(factor(maint), ref = "3") + grade, data = dftotal)
-vam5 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + mdegree + factor(sctype) + relevel(factor(maint), ref = "3") + grade + hstat + lbrthw, data = dftotal)
+vam2 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + factor(hstat) + lbrthw, data = dftotal)
+vam3 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + factor(hstat) + lbrthw + homesc + nmin, data = dftotal)
+vam4 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + factor(hstat) + lbrthw + homesc + nmin + factor(sctype) + factor(maint) + factor(region) + grade, data = dftotal)
+vam5 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + factor(hstat) + lbrthw + homesc + nmin + factor(sctype) + factor(maint) + factor(region) + grade + factor(mdegree) + lhincome + factor(welf), data = dftotal)
+vam6 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + factor(hstat) + lbrthw + homesc + nmin + factor(sctype) + factor(maint) + factor(region) + grade + factor(mdegree) + lhincome + factor(welf) + PSI, data = dftotal)
+vam7 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + factor(hstat) + lbrthw + homesc + nmin + factor(sctype) + factor(maint) + factor(region) + grade + factor(mdegree) + lhincome + factor(welf) + PSI + nschange, data = dftotal)
 
-stargazer(vam1,vam2,vam3,vam4,vam5,
+stargazer(vam1,vam2,vam3,vam4,vam5,vam6,vam7,
           title="VAM of Parental Separation Effect on Final Grades",
           header=FALSE, 
           digits=3,
           font.size = "footnotesize",
           align = TRUE,
-          column.sep.width = "0pt",
+          column.sep.width = "-15pt",
           no.space = TRUE,
-          omit = c("male", "roma", "age", "mdegree", 'mnsal', "sctype", "maint", 'grade', 'hstat', 'lbrthw', 'Constant'),
+          omit = c("male", "roma", "age", "mdegree", 'lhincome', "homesc", "welf", "nmin", "sctype", "maint", 'grade', 'hstat', 'lbrthw', 'region', "nschange", "PSI", 'Constant'),
           dep.var.labels = c("Final Grade in 2009"),
           covariate.labels = c("Separated between 2006 and 2008",
                                "Separated before 2006"),
-          add.lines = list(c("Covariates:"),
-                           c("Student FE", "", "Yes", "Yes", "Yes", "Yes"),
-                           c("SES", "", "", "Yes", "Yes", "Yes"),
-                           c("School FE", "", "", "", "Yes", "Yes"),
-                           c("Health", "", "", "", "", "Yes")),
+          add.lines = list(c("Control variables:"),
+                           c("2006 Final Grade", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes"),
+                           c("Student Characteristics", "", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes"),
+                           c("Home Environment", "", "", "Yes", "Yes", "Yes", "Yes", "Yes"),
+                           c("School FE", "", "", "", "Yes", "Yes", "Yes", "Yes"),
+                           c("SES", "", "", "", "", "Yes", "Yes", "Yes"),
+                           c("PSI", "", "", "", "", "", "Yes", "Yes"),
+                           c("Residential Mobility", "", "", "", "", "", "", "Yes")),
           omit.stat = c("rsq", "f", "ser"),
           type = "latex")
  
