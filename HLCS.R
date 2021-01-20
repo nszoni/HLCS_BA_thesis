@@ -11,8 +11,8 @@ if (!require("pacman")) {
   install.packages("pacman")
 }
 
-pacman::p_load(AER, haven, ggplot2, dplyr, 
-               plyr, data.table, plm,
+pacman::p_load(AER, usdm, haven, ggplot2, dplyr, sandwich,
+               plyr, data.table, plm, MASS,
                stargazer, labelled, sjlabelled,
                summarytools, reshape2, Hmisc,
                corrplot, caret, foreign, lmtest,
@@ -611,8 +611,6 @@ df2006$fam_str <- as.factor(ifelse((fbio == 1) & (mbio == 1), 'tparent', #two-pa
 # Family structure dummy
 df2006$nintact <- as.factor(ifelse((fbio == 1) & (mbio == 1), 0, 1))
 
-df2006$pinv <- df2006$txtbook + df2006$transc + df2006$xtraclass + df2006$sctrip
-
 detach(df2006)
 
 # Unifying differences before union -----------------------------------------
@@ -798,6 +796,7 @@ df2006$nmin <- df2006$ekor03 + df2006$ekor46 + df2006$ekor714 + df2006$ekor151
 df2006$fgrade <- concatFgrade(df2006, "fgrade", "infgrade", "decfgrade")
 df2006 <- df2006[,!(names(df2006) %in% c("intfgrade", "decfgrade"))]
 df2006$fgrade[df2006$fgrade > 5 | df2006$fgrade < 1] <- NA
+df2006$pinv <- df2006$txtbook + df2006$transc + df2006$xtraclass + df2006$sctrip
 
 # flattenCorrMatrix <- function(cormat, pmat) {
 #   ut <- upper.tri(cormat)
@@ -809,13 +808,12 @@ df2006$fgrade[df2006$fgrade > 5 | df2006$fgrade < 1] <- NA
 #   )
 # }
 
-cormatdf <- df2006[c('fgrade',
-                     'lhincome',
+cormatdf <- df2006[c('lhincome',
                      'homesc',
-                     'nmin',
                      'pinv',
-                     'nschange',
-                     'brthw')]
+                     'brthw',
+                     'mdegree',
+                     'welf')]
 
 # cor <- cormatdf %>% remove_all_labels() %>% cor(use = "complete.obs") %>% round(., 2)
 # res1 <- rcorr(as.matrix(cormatdf))
@@ -872,6 +870,16 @@ corstars <-function(x, method=c("pearson", "spearman"), removeTriangle=c("upper"
 } 
 
 corstars(cormatdf, "pearson", "upper", "latex")
+
+vif <- vif(cormatdf)
+row.names(vif) <- c("Household Income", "HOME", "Parental Investments", "Birthweight", "Maternal Degree", "Welfare level")
+
+xtd <- xtable(vif["VIF"],
+              digits = 2,
+              auto = TRUE,
+              caption = "Variance Inflation Factors",
+              type = "latex")
+print(xtd, include.rownames=TRUE)
 
 # VAM (Value Added Model) for Final grades--------------------------------------------------------------------
 vars <- c("ID",
@@ -1008,152 +1016,29 @@ stargazer(vam1,vam2,vam3,vam4,vam5,vam6,vam7,
                            c("Residential Mobility", "", "", "", "", "", "", "Yes")),
           omit.stat = c("rsq", "f", "ser"),
           type = "latex")
- 
-# TWFE regression ------------------------------------------------------------------
-#!!SUBSET FOR THOSE WHO WHERE IN INTACT FAMILIES IN 2006
-#e.g. reported intact family in Y-1 = 2006, Y1 = 2009, Y0 = somewhere between the two
 
-dftotal$y09 <- ifelse(dftotal$year == 2009, 1, 0)
+bptest(vam7)
 
-#bivariate pooled OLS regression
- 
-ols_bi <- lm(fgrade ~ nintact, data = dftotal)
- 
-#multivariate pooled OLS regression for final grade
-#sepage and divordeath is not representative (too much NAs)
-
-ols_m1 <- lm(fgrade ~ nintact + mnsal + fnsal + gender + PSI + pinv + schange, data = dftotal)
-
-#given that it is a intact (non-intact) family
-intact <- subset(dftotal, nintact == 0)
-nintact <- subset(dftotal, nintact == 1)
-
-#ols for disrupted families
-ols_m2 <- lm(fgrade ~ mnsal + fnsal + gender + PSI + pinv + schange, data = intact)
-ols_m3 <- lm(fgrade ~ mnsal + fnsal + gender + PSI + pinv + schange + divordth + age_at_sepf, data = nintact)
-
-stargazer(ols_bi, ols_m1, ols_m2, ols_m3, type = 'text')
-
-#diff in diff models
-
-coeftest(lm(fgrade ~ nintact*y09, data = dftotal))
-
-mod1 <- lm(fgrade ~ nintact*y09, data = dftotal) #pure effect
-mod2 <- lm(fgrade ~ nintact*y09 + age + I(age^2/100) + male + minor + + full, data = dftotal) #adding time-invariant features
-mod3 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + roma + full, data = dftotal) #adding income related features
-mod4 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + roma + full + mdegree + nsib, data = dftotal) #other socioeconomic influences
-mod5 <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + roma + full + mdegree + nsib + cnbrh + factor(region), data = dftotal) #controls for geos
-
-stargazer(mod1, mod2, mod3, mod4, mod5,
-          title="DiD of the parental separation on final grade",
-          header=FALSE, 
-          digits=2,
-          font.size = "small",
-          align = TRUE,
-          omit.stat = c("f", "ser"),
-          column.sep.width = "0pt",
-          no.space = TRUE,
-          dep.var.labels = "Final Grade",
-          covariate.labels = c("Non-intact",
-                               "Y2009",
-                               "Maternal Net Salary",
-                               "Poor welfare",
-                               "Average welfare",
-                               "Above-average welfare",
-                               "Very good welfare",
-                               "Age",
-                               "Age**2",
-                               "Male",
-                               "Roma-origin",
-                               "Full-time",
-                               "Degree of mother",
-                               "Number of Siblings",
-                               "Neighborhood conditions",
-                               "Central Transdanubia",
-                               "Western Transdanubia",
-                               "Southern Transdanubia",
-                               "Norhtern Hungary",
-                               "Northern Great Plain",
-                               "Southern Great Plain",
-                               "Non-intact*Y2009"),
-          column.labels = c("baseline", "time-invariant", "income related", "other SES", "geographical"),
-          type = "latex")
-
-# Accuracy tests ----------------------------------------------------------
-
-#Hypothesis testing
-#kable(anova(mod1, mod2), 
-#      caption="Chow test for the 'intact' equation")
+coeftest(vam7, vcov = hccm) #standard robust error needed?
 
 #Model selection criteria
-r1 <- as.numeric(glance(mod1))
-r2 <- as.numeric(glance(mod2))
-tab <- data.frame(rbind(r1, r2))[,c(1,2,8,9)]
-row.names(tab) <- c("nintact","nintact + controls")
-kable(tab, 
-      caption="Model comparison, 'nintact' ", digits=4, 
-      col.names=c("Rsq","AdjRsq","AIC","BIC"))
+r1 <- as.numeric(glance(vam1))
+r2 <- as.numeric(glance(vam2))
+r3 <- as.numeric(glance(vam3))
+r4 <- as.numeric(glance(vam4))
+r5 <- as.numeric(glance(vam5))
+r6 <- as.numeric(glance(vam6))
+r7 <- as.numeric(glance(vam7))
+tab <- data.frame(rbind(r1, r2, r3, r4, r5, r6, r7))[,c(2,8,9)]
+row.names(tab) <- c("No Covariates","+ Student Characteristics", "+ Home environment", "+ School FE", "+ SES", "+ PSI", "+ Residential Mobility")
+colnames(tab) <- c("AdjRsq", "AIC", "BIC")
 
-#Ramsey test of higher-order polynomials (H0: higher order polynomials are needed)
-resettest(mod5, power=2:3, type="fitted")
-
-#VIF (variance inflation factor) test for multicollinearity
-tab <- tidy(vif(mod5)[, c(1)])
-kable(tab, 
-      caption="Variance inflation factors for the 'fgrade' regression model",
-      col.names=c("regressor", "VIF"))
-#age and age^2 are highly correlated as expected but we can ignore that since one variable is the
-#linear transformation of the other, therefore the econometric problem is not present.
-
-#Heteroskedasticity of error terms w/ Breusch-Pagan test
-kable(tidy(bptest(mod2)), 
-      caption="Breusch-Pagan heteroskedasticity test")
-#we can reject the homoskedasticity
-
-# Robustness checks -------------------------------------------------------
-
-# Placebo permutation test: Randomly assign the intervention(s) to create the sampling distribution of the null hypothesis.
-      
-      # 1) Drop all the outcomes for treated observations after they receive treatment for the the first time. Everyone in the remaining data should only have untreated outcome data.
-      
-      # 2) Insert a phantom treatment event in the middle of the remaining data for the treated group. You might have to break some ties if you have an even number of periods.
-      
-      # 3) Run your diff-in-diff model and check the interaction coefficient.
-
-set.seed(1234)
-dftotalp <- as.data.table(dftotal[!(dftotal$nintact == 1 & dftotal$y09 == 1),])
-dftotalp[y09 == 1, nintact := sample(1:2, .N, replace = T)]
-modp <- lm(fgrade ~ nintact*y09 + I(mnsal/1000) + factor(welf) + age + I(age^2/100) + male + roma + full + mdegree + nsib + cnbrh + factor(region), data = dftotalp)
-stargazer(modp, type = "text") #interaction is no more significant --> assumption holds
-
-# Lags and Leads: If D causes Y then current and lagged values should have an effect on Y,
-# but future values of D should not.
-
-# Use different comparison groups. Different groups should have the same affect.
-
-# Use an outcome variable that you know is not affected by the intervention. If DiD estimates not zero, then there is some other difference between groups.
-
-#Common trend assumption or SUTVA
-#plot of counterfactual
-
-b1 <- coef(mod5)[[1]]
-b2 <- coef(mod5)[["nintact1"]]
-b3 <- coef(mod5)[["y08"]]
-delta <- coef(mod5)[["nintact1:y08"]]
-C <- b1+b2+b3+delta
-E <- b1+b3
-B <- b1+b2
-A <- b1
-D <- E+(B-A)
-
-plot(1, type="n", main = "Estimated impact of parental separation", xlab="Period", ylab="Final Grade", xaxt="n",
-     xlim=c(-0.01, 1.01), ylim=c(-4.04, -3.87))
-segments(x0=0, y0=A, x1=1, y1=E, lty=1, col=2, lwd = 5)#control
-segments(x0=0, y0=B, x1=1, y1=C, lty=3, col=3, lwd = 5)#treated
-segments(x0=0, y0=B, x1=1, y1=D, lty=4, col=4, lwd = 5) #counterfactual
-legend("center", legend=c("control", "treated", 
-                          "counterfactual"), lty=c(1,3,4), col=c(2,3,4), cex = 0.75)
-axis(side=1, at=c(0,1), labels=NULL)
+xtd <- xtable(tab,
+              digits = 2,
+              auto = TRUE,
+              caption = "Penalization Statistics",
+              type = "latex")
+print(xtd, include.rownames=TRUE)
 
 # Staggered DID -----------------------------------------------------------
 
@@ -1404,7 +1289,7 @@ summary(did.dync6)
 
 # Aggregated ATT ----------------------------------------------------------
 
-attd <- data.table(Covariates = c("No Covariates","+ Student Characteristics", "+ SES Variables", "+ School Characteristics", "+ Health Characteristics"), 
+attd <- data.table(Covariates = c("No Covariates","+ Student Characteristics", "+ Home environment", "+ School FE", "+ SES", "+ PSI", "+ Residential Mobility"), 
                    ATT = c(did.dynuc$overall.att, did.dync1$overall.att, did.dync2$overall.att, did.dync3$overall.att, did.dync4$overall.att, did.dync5$overall.att, did.dync6$overall.att), 
                    se = c(did.dynuc$overall.se, did.dync1$overall.se, did.dync2$overall.se, did.dync3$overall.se, did.dync4$overall.se, did.dync5$overall.se, did.dync6$overall.se),
                    PTA = c(att_gt$Wpval, att_gtc1$Wpval, att_gtc2$Wpval, att_gtc3$Wpval, att_gtc4$Wpval, att_gtc5$Wpval, att_gtc6$Wpval))
@@ -1492,7 +1377,7 @@ dftotal9 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat
 #unconditional att(g,t)
 att_gt <- att_gt(yname = "fgrade",
                  tname = "year",
-                 first.treat.name = "first_treat",
+                 first.treat.name = "first_treat2",
                  control.group = "nevertreated",
                  xformla = ~1,
                  data = dftotal3,
@@ -1601,7 +1486,7 @@ summary(did.dync6)
 
 # Aggregated ATT ----------------------------------------------------------
 
-attd <- data.table(Covariates = c("No Covariates","+ Student Characteristics", "+ SES Variables", "+ School Characteristics", "+ Health Characteristics"), 
+attd <- data.table(Covariates = c("No Covariates","+ Student Characteristics", "+ Home environment", "+ School FE", "+ SES", "+ PSI", "+ Residential Mobility"), 
                    ATT = c(did.dynuc$overall.att, did.dync1$overall.att, did.dync2$overall.att, did.dync3$overall.att, did.dync4$overall.att, did.dync5$overall.att, did.dync6$overall.att), 
                    se = c(did.dynuc$overall.se, did.dync1$overall.se, did.dync2$overall.se, did.dync3$overall.se, did.dync4$overall.se, did.dync5$overall.se, did.dync6$overall.se),
                    PTA = c(att_gt$Wpval, att_gtc1$Wpval, att_gtc2$Wpval, att_gtc3$Wpval, att_gtc4$Wpval, att_gtc5$Wpval, att_gtc6$Wpval))
@@ -1665,13 +1550,13 @@ ggdid(did.dync6) +
 
 # Additional Results for Math ---------------------------------------------
 
-dftotal3 <- na.omit(dftotal21[,c("ID","year","math","first_treat")]) #baseline
-dftotal4 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","math","first_treat")]) #student char
-dftotal5 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","first_treat")]) #home environment
-dftotal6 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","region","sctype","maint","first_treat")]) #school char
-dftotal7 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","region","sctype","maint","lhincome","welf","mdegree","first_treat")]) #SES
-dftotal8 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","region","sctype","maint","lhincome","welf","mdegree","PSI","first_treat")]) #PSI
-dftotal9 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","region","sctype","maint","lhincome","welf","mdegree","PSI","nschange","first_treat")]) #Residential Mobility
+dftotal3 <- na.omit(dftotal22[,c("ID","year","math","first_treat2")]) #baseline
+dftotal4 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","math","first_treat2")]) #student char
+dftotal5 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","first_treat2")]) #home environment
+dftotal6 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","region","sctype","maint","first_treat2")]) #school char
+dftotal7 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","region","sctype","maint","lhincome","welf","mdegree","first_treat2")]) #SES
+dftotal8 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","region","sctype","maint","lhincome","welf","mdegree","PSI","first_treat2")]) #PSI
+dftotal9 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","region","sctype","maint","lhincome","welf","mdegree","PSI","nschange","first_treat2")]) #Residential Mobility
 
 att_gtc1 <- att_gt(yname = "math",
                    tname = "year",
@@ -1773,7 +1658,7 @@ summary(did.dync6)
 
 # Aggregated ATT ----------------------------------------------------------
 
-attd <- data.table(Covariates = c("No Covariates","+ Student Characteristics", "+ SES Variables", "+ School Characteristics", "+ Health Characteristics"), 
+attd <- data.table(Covariates = c("No Covariates","+ Student Characteristics", "+ Home environment", "+ School FE", "+ SES", "+ PSI", "+ Residential Mobility"), 
                    ATT = c(did.dynuc$overall.att, did.dync1$overall.att, did.dync2$overall.att, did.dync3$overall.att, did.dync4$overall.att, did.dync5$overall.att, did.dync6$overall.att), 
                    se = c(did.dynuc$overall.se, did.dync1$overall.se, did.dync2$overall.se, did.dync3$overall.se, did.dync4$overall.se, did.dync5$overall.se, did.dync6$overall.se),
                    PTA = c(att_gt$Wpval, att_gtc1$Wpval, att_gtc2$Wpval, att_gtc3$Wpval, att_gtc4$Wpval, att_gtc5$Wpval, att_gtc6$Wpval))
