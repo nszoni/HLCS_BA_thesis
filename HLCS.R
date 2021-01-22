@@ -1228,6 +1228,7 @@ att_gtc5 <- att_gt(yname = "fgrade",
                    gname = "first_treat",
                    xformla = ~ male + roma + age + lbrthw + factor(hstat) + homesc + nmin + region + sctype + maint + lhincome + factor(welf) + factor(mdegree) + PSI + lpinv,
                    control_group = "nevertreated",
+                   anticipation = 1,
                    data = dftotal8,
                    bstrap=TRUE,
                    panel = FALSE,
@@ -1308,49 +1309,49 @@ ggdid(did.dynuc) +
   geom_smooth(aes(did.dynuc$egt, did.dynuc$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.1), colour="red", angle=90, text=element_text(size=11)) +
-  labs(title = "Parental Separation ~ Final Grade",
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
        subtitle = "Unconditional Design")
 
 ggdid(did.dync1) + 
   geom_smooth(aes(did.dync1$egt, did.dync1$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.4), colour="red", angle=90, text=element_text(size=11)) +
-  labs(title = "Parental Separation ~ Final Grade",
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
        subtitle = "Covariates: Student")
 
 ggdid(did.dync2) + 
   geom_smooth(aes(did.dync2$egt, did.dync2$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.25), colour="red", angle=90, text=element_text(size=11)) +
-  labs(title = "Parental Separation ~ Final Grade",
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
        subtitle = "Covariates: Student + Home")
 
 ggdid(did.dync3) + 
   geom_smooth(aes(did.dync3$egt, did.dync3$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
-  labs(title = "Parental Separation ~ Final Grade",
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
        subtitle = "Covariates: Student + Home + School")
 
 ggdid(did.dync4) + 
   geom_smooth(aes(did.dync4$egt, did.dync4$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
-  labs(title = "Parental Separation ~ Final Grade",
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
        subtitle = "Covariates: Student + Home + School + SES")
 
 ggdid(did.dync5) + 
   geom_smooth(aes(did.dync5$egt, did.dync5$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
-  labs(title = "Parental Separation ~ Final Grade",
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
        subtitle = "Covariates: Student + Home + School + SES + PSI")
 
 ggdid(did.dync6) + 
   geom_smooth(aes(did.dync6$egt, did.dync6$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
-  labs(title = "Parental Separation ~ Final Grade",
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
        subtitle = "Covariates: Student + Home + School + SES + PSI + Residential Mobility")
 
 # DID for lower bound -----------------------------------------------------
@@ -1505,64 +1506,64 @@ ggdid(did.dynuc) +
   geom_smooth(aes(did.dynuc$egt, did.dynuc$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.1), colour="red", angle=90, text=element_text(size=11)) +
-  labs(title = "Parental Separation ~ Final Grade",
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
        subtitle = "Unconditional Design")
 
 ggdid(did.dync1) + 
   geom_smooth(aes(did.dync1$egt, did.dync1$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.4), colour="red", angle=90, text=element_text(size=11)) +
-  labs(title = "Parental Separation ~ Final Grade",
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
        subtitle = "Covariates: Student")
 
 ggdid(did.dync2) + 
   geom_smooth(aes(did.dync2$egt, did.dync2$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.25), colour="red", angle=90, text=element_text(size=11)) +
-  labs(title = "Parental Separation ~ Final Grade",
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
        subtitle = "Covariates: Student + Home")
 
 ggdid(did.dync3) + 
   geom_smooth(aes(did.dync3$egt, did.dync3$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
-  labs(title = "Parental Separation ~ Final Grade",
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
        subtitle = "Covariates: Student + Home + School")
 
 ggdid(did.dync4) + 
   geom_smooth(aes(did.dync4$egt, did.dync4$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
-  labs(title = "Parental Separation ~ Final Grade",
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
        subtitle = "Covariates: Student + Home + School + SES")
 
 ggdid(did.dync5) + 
   geom_smooth(aes(did.dync5$egt, did.dync5$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
-  labs(title = "Parental Separation ~ Final Grade",
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
        subtitle = "Covariates: Student + Home + School + SES + PSI")
 
 ggdid(did.dync6) + 
   geom_smooth(aes(did.dync6$egt, did.dync6$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
   geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
-  labs(title = "Parental Separation ~ Final Grade",
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
        subtitle = "Covariates: Student + Home + School + SES + PSI + Residential Mobility")
 
 # Additional Results for Math ---------------------------------------------
 
-dftotal3 <- na.omit(dftotal22[,c("ID","year","math","first_treat2")]) #baseline
-dftotal4 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","math","first_treat2")]) #student char
-dftotal5 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","first_treat2")]) #home environment
-dftotal6 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","region","sctype","maint","first_treat2")]) #school char
-dftotal7 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","region","sctype","maint","lhincome","welf","mdegree","first_treat2")]) #SES
-dftotal8 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","region","sctype","maint","lhincome","welf","mdegree","PSI","lpinv","first_treat2")]) #PSI
-dftotal9 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","region","sctype","maint","lhincome","welf","mdegree","PSI","nschange","lpinv","first_treat2")]) #Residential Mobility
+dftotal3 <- na.omit(dftotal21[,c("ID","year","math","first_treat")]) #baseline
+dftotal4 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","math","first_treat")]) #student char
+dftotal5 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","first_treat")]) #home environment
+dftotal6 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","region","sctype","maint","first_treat")]) #school char
+dftotal7 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","region","sctype","maint","lhincome","welf","mdegree","first_treat")]) #SES
+dftotal8 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","region","sctype","maint","lhincome","welf","mdegree","PSI","lpinv","first_treat")]) #PSI
+dftotal9 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","homesc","nmin","math","region","sctype","maint","lhincome","welf","mdegree","PSI","nschange","lpinv","first_treat")]) #Residential Mobility
 
 att_gtc1 <- att_gt(yname = "math",
                    tname = "year",
-                   gname = "first_treat2",
+                   gname = "first_treat",
                    xformla = ~ male + roma + age + lbrthw + factor(hstat),
                    control_group = "nevertreated",
                    data = dftotal4,
@@ -1573,7 +1574,7 @@ att_gtc1 <- att_gt(yname = "math",
 #adding home environment
 att_gtc2 <- att_gt(yname = "math",
                    tname = "year",
-                   gname = "first_treat2",
+                   gname = "first_treat",
                    xformla = ~ male + roma + age + lbrthw + factor(hstat) + homesc + nmin,
                    control_group = "nevertreated",
                    data = dftotal5,
@@ -1584,7 +1585,7 @@ att_gtc2 <- att_gt(yname = "math",
 #adding school
 att_gtc3 <- att_gt(yname = "math",
                    tname = "year",
-                   gname = "first_treat2",
+                   gname = "first_treat",
                    xformla = ~ male + roma + age + lbrthw + factor(hstat) + homesc + nmin + region + sctype + maint,
                    control_group = "nevertreated",
                    data = dftotal6,
@@ -1595,7 +1596,7 @@ att_gtc3 <- att_gt(yname = "math",
 #adding SES
 att_gtc4 <- att_gt(yname = "math",
                    tname = "year",
-                   gname = "first_treat2",
+                   gname = "first_treat",
                    xformla = ~ male + roma + age + lbrthw + factor(hstat) + homesc + nmin + region + sctype + maint + lhincome + factor(welf) + factor(mdegree),
                    control_group = "nevertreated",
                    data = dftotal7,
@@ -1606,7 +1607,7 @@ att_gtc4 <- att_gt(yname = "math",
 #adding PSI
 att_gtc5 <- att_gt(yname = "math",
                    tname = "year",
-                   gname = "first_treat2",
+                   gname = "first_treat",
                    xformla = ~ male + roma + age + lbrthw + factor(hstat) + homesc + nmin + region + sctype + maint + lhincome + factor(welf) + factor(mdegree) + PSI + lpinv,
                    control_group = "nevertreated",
                    data = dftotal8,
@@ -1617,7 +1618,7 @@ att_gtc5 <- att_gt(yname = "math",
 #adding residential mobility
 att_gtc6 <- att_gt(yname = "math",
                    tname = "year",
-                   gname = "first_treat2",
+                   gname = "first_treat",
                    xformla = ~ male + roma + age + lbrthw + factor(hstat) + homesc + nmin + region + sctype + maint + lhincome + factor(welf) + factor(mdegree) + PSI + lpinv + nschange,
                    control_group = "nevertreated",
                    data = dftotal9,
@@ -1667,7 +1668,7 @@ attd <- data.table(Covariates = c("No Covariates (1)","+ Student Characteristics
 xtd <- xtable(attd,
               digits = 3,
               auto = TRUE,
-              caption = "Lower-bound Aggregated Group-time Average Treatment Effects",
+              caption = "Upper-bound Aggregated Group-time Average Treatment Effects",
               type = "latex")
 print(xtd, include.rownames=FALSE)
 
