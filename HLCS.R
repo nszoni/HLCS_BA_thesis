@@ -984,8 +984,6 @@ dftotal <- dftotal[dftotal$year == 2009,]
 
 names(dftotal)[names(dftotal) == 'fgrade.x'] <- 'fgrade09'
 names(dftotal)[names(dftotal) == 'fgrade.y'] <- 'fgrade06'
-# names(dftotal)[names(dftotal) == 'math.x'] <- 'math09'
-# names(dftotal)[names(dftotal) == 'math.y'] <- 'math06'
 
 vam1 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0"), data = dftotal)
 vam2 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + factor(hstat) + lbrthw, data = dftotal)
