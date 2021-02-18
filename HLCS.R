@@ -12,7 +12,7 @@ if (!require("pacman")) {
 }
 
 pacman::p_load(AER, usdm, haven, ggplot2, dplyr, sandwich,
-               plyr, data.table, plm, MASS,
+               plyr, data.table, plm, MASS, ggdag,
                stargazer, labelled, sjlabelled,
                summarytools, reshape2, Hmisc,
                corrplot, caret, foreign, lmtest,
@@ -22,6 +22,8 @@ pacman::p_load(AER, usdm, haven, ggplot2, dplyr, sandwich,
 
 wd <- file.path("~", "HLCS_BA_thesis", "kesz")
 setwd(wd)
+
+set.seed(1234)
 
 df2006_start <- read_dta("eletpalya_a.dta")
 df2007_start <- read_dta("eletpalya_b.dta")
@@ -979,6 +981,9 @@ dftotal$lpinv[dftotal$lpinv == -Inf] <- NA
 
 dftotal$nintact <- as.numeric(levels(dftotal$nintact))[dftotal$nintact]
 
+#school types
+dftotal$sctype <- ifelse(dftotal$sctype %in% c(2,3), 1, ifelse(dftotal$sctype %in% c(4,5,6), 2, 3))
+
 dftotal <- dftotal %>%
   group_by(ID) %>%
   mutate(sep = as.factor(sum(nintact, na.rm = TRUE)))
@@ -998,24 +1003,24 @@ vam1 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0"), data = dftotal)
 vam2 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + factor(hstat) + lbrthw, data = dftotal)
 vam3 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + factor(hstat) + lbrthw + factor(mdegree) + lhincome + factor(welf), data = dftotal)
 vam4 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + factor(hstat) + lbrthw + factor(mdegree) + lhincome + factor(welf) + homesc + nmin, data = dftotal)
-vam5 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + factor(hstat) + lbrthw + factor(mdegree) + lhincome + factor(welf) + homesc + nmin + factor(maint) + factor(region), data = dftotal)
-vam6 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + factor(hstat) + lbrthw + factor(mdegree) + lhincome + factor(welf) + homesc + nmin + factor(maint) + factor(region) + PSI + lpinv, data = dftotal)
-vam7 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + factor(hstat) + lbrthw + factor(mdegree) + lhincome + factor(welf) + homesc + nmin + factor(maint) + factor(region) + PSI + lpinv + nschange, data = dftotal)
+vam5 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + factor(hstat) + lbrthw + factor(mdegree) + lhincome + factor(welf) + homesc + nmin + factor(maint) + factor(region) + factor(sctype), data = dftotal)
+vam6 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + factor(hstat) + lbrthw + factor(mdegree) + lhincome + factor(welf) + homesc + nmin + factor(maint) + factor(region) + factor(sctype)+ PSI + lpinv, data = dftotal)
+vam7 <- lm(fgrade09 ~ fgrade06 + relevel(sep, ref = "0") + male + roma + age + factor(hstat) + lbrthw + factor(mdegree) + lhincome + factor(welf) + homesc + nmin + factor(maint) + factor(region) + factor(sctype)+ PSI + lpinv + nschange, data = dftotal)
 
 stargazer(vam1,vam2,vam3,vam4,vam5,vam6,vam7,
-          title="VAM of Parental Separation Effect on Final Grades",
+          title="VAM of Parental Separation Effect on GPA",
           header=FALSE, 
           digits=3,
           font.size = "footnotesize",
           align = TRUE,
           column.sep.width = "-15pt",
           no.space = TRUE,
-          omit = c("fgrade06", "male", "roma", "age", "mdegree", 'lhincome', "homesc", "welf", "nmin", "maint", 'hstat', 'lbrthw', 'region', "nschange", "PSI", "pinv", 'Constant'),
-          dep.var.labels = c("Final Grade in 2009"),
+          omit = c("fgrade06", "male", "roma", "age", "mdegree", 'lhincome', "homesc", "welf", "nmin", "maint",'sctype','hstat', 'lbrthw', 'region', "nschange", "PSI", "pinv", 'Constant'),
+          dep.var.labels = c("2009 GPA"),
           covariate.labels = c("Separated between 2006 and 2008",
                                "Separated before 2006"),
           add.lines = list(c("Control variables:"),
-                           c("2006 Final Grade", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes"),
+                           c("2006 GPA", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes"),
                            c("Student Characteristics", "", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes"),
                            c("SES", "", "", "Yes", "Yes", "Yes", "Yes", "Yes"),
                            c("Home Environment", "", "", "", "Yes", "Yes", "Yes", "Yes"),
@@ -1143,6 +1148,9 @@ dftotal2$lhincome[dftotal2$lhincome == -Inf] <- NA
 dftotal2$nmin <- dftotal2$ekor03 + dftotal2$ekor46 + dftotal2$ekor714 + dftotal2$ekor151
 #too much missing values in house parameters (2008-2009)
 
+#school types
+dftotal2$sctype <- ifelse(dftotal2$sctype %in% c(2,3), 1, ifelse(dftotal2$sctype %in% c(4,5,6), 2, 3))
+
 # DID for upper bound -----------------------------------------------------
 # Family structure dummy (upper-bound estimation)
 dftotal2$nintact <- as.factor(ifelse((dftotal2$fbio == 1) & (dftotal2$mbio == 1), 0, 1))
@@ -1162,9 +1170,9 @@ dftotal3 <- na.omit(dftotal21[,c("ID","year","fgrade","first_treat")]) #baseline
 dftotal4 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","fgrade","first_treat")]) #student char
 dftotal5 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","fgrade","first_treat")]) #ses
 dftotal6 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","fgrade","first_treat")]) #home
-dftotal7 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","fgrade","first_treat")]) #school char
-dftotal8 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","PSI","lpinv","fgrade","first_treat")]) #PSI and lpinv
-dftotal9 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","PSI","lpinv","nschange","fgrade","first_treat")]) #Residential Mobility
+dftotal7 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","sctype","fgrade","first_treat")]) #school char
+dftotal8 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","sctype","PSI","lpinv","fgrade","first_treat")]) #PSI and lpinv
+dftotal9 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","sctype","PSI","lpinv","nschange","fgrade","first_treat")]) #Residential Mobility
 
 #unconditional att(g,t)
 att_gt <- att_gt(yname = "fgrade",
@@ -1214,7 +1222,7 @@ att_gtc3 <- att_gt(yname = "fgrade",
 att_gtc4 <- att_gt(yname = "fgrade",
                    tname = "year",
                    gname = "first_treat",
-                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint),
+                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint) + factor(sctype),
                    control_group = "nevertreated",
                    data = dftotal7,
                    bstrap=TRUE,
@@ -1225,7 +1233,7 @@ att_gtc4 <- att_gt(yname = "fgrade",
 att_gtc5 <- att_gt(yname = "fgrade",
                    tname = "year",
                    gname = "first_treat",
-                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint) + PSI + lpinv,
+                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint) + factor(sctype) + PSI + lpinv,
                    control_group = "nevertreated",
                    data = dftotal8,
                    bstrap=TRUE,
@@ -1236,7 +1244,7 @@ att_gtc5 <- att_gt(yname = "fgrade",
 att_gtc6 <- att_gt(yname = "fgrade",
                    tname = "year",
                    gname = "first_treat",
-                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint) + PSI + lpinv + nschange,
+                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint) + factor(sctype) + PSI + lpinv + nschange,
                    control_group = "nevertreated",
                    data = dftotal9,
                    bstrap=TRUE,
@@ -1371,9 +1379,9 @@ dftotal3 <- na.omit(dftotal22[,c("ID","year","fgrade","first_treat2")]) #baselin
 dftotal4 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","fgrade","first_treat2")]) #student char
 dftotal5 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","fgrade","first_treat2")]) #ses
 dftotal6 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","fgrade","first_treat2")]) #home
-dftotal7 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","fgrade","first_treat2")]) #school char
-dftotal8 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","PSI","lpinv","fgrade","first_treat2")]) #PSI and lpinv
-dftotal9 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","PSI","lpinv","nschange","fgrade","first_treat2")]) #Residential Mobility
+dftotal7 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","sctype","fgrade","first_treat2")]) #school char
+dftotal8 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","sctype","PSI","lpinv","fgrade","first_treat2")]) #PSI and lpinv
+dftotal9 <- na.omit(dftotal22[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","sctype","PSI","lpinv","nschange","fgrade","first_treat2")]) #Residential Mobility
 
 #unconditional att(g,t)
 att_gt <- att_gt(yname = "fgrade",
@@ -1423,7 +1431,7 @@ att_gtc3 <- att_gt(yname = "fgrade",
 att_gtc4 <- att_gt(yname = "fgrade",
                    tname = "year",
                    gname = "first_treat2",
-                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint),
+                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint) + factor(sctype),
                    control_group = "nevertreated",
                    data = dftotal7,
                    bstrap=TRUE,
@@ -1434,7 +1442,7 @@ att_gtc4 <- att_gt(yname = "fgrade",
 att_gtc5 <- att_gt(yname = "fgrade",
                    tname = "year",
                    gname = "first_treat2",
-                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint) + PSI + lpinv,
+                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint) + factor(sctype) + PSI + lpinv,
                    control_group = "nevertreated",
                    data = dftotal8,
                    bstrap=TRUE,
@@ -1445,7 +1453,7 @@ att_gtc5 <- att_gt(yname = "fgrade",
 att_gtc6 <- att_gt(yname = "fgrade",
                    tname = "year",
                    gname = "first_treat2",
-                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint) + PSI + lpinv + nschange,
+                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint) + factor(sctype) + PSI + lpinv + nschange,
                    control_group = "nevertreated",
                    data = dftotal9,
                    bstrap=TRUE,
@@ -1500,7 +1508,54 @@ print(xtd, include.rownames=FALSE)
 
 # Plot event dynamic studies ----------------------------------------------
 
+ggdid(did.dynuc) + 
+  geom_smooth(aes(did.dynuc$egt, did.dynuc$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.1), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
+       subtitle = "Unconditional Design")
 
+ggdid(did.dync1) + 
+  geom_smooth(aes(did.dync1$egt, did.dync1$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.4), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
+       subtitle = "Covariates: Student")
+
+ggdid(did.dync2) + 
+  geom_smooth(aes(did.dync2$egt, did.dync2$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.25), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
+       subtitle = "Covariates: Student + SES")
+
+ggdid(did.dync3) + 
+  geom_smooth(aes(did.dync3$egt, did.dync3$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
+       subtitle = "Covariates: Student + SES + Home")
+
+ggdid(did.dync4) + 
+  geom_smooth(aes(did.dync4$egt, did.dync4$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
+       subtitle = "Covariates: Student + SES + Home + School")
+
+ggdid(did.dync5) + 
+  geom_smooth(aes(did.dync5$egt, did.dync5$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
+       subtitle = "Covariates: Student + SES + Home + School + PSI")
+
+ggdid(did.dync6) + 
+  geom_smooth(aes(did.dync6$egt, did.dync6$att.egt), lwd = 0.8, col = "black") + 
+  geom_vline(xintercept = 0, col = "red", lty = "dashed") +
+  geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
+  labs(title = "Dynamic Aggregated ATT of Parental Separation on GPA",
+       subtitle = "Covariates: Student + SES + Home + School + PSI + Residential Mobility")
 
 # Additional Results for Math ---------------------------------------------
 
@@ -1508,9 +1563,9 @@ dftotal3 <- na.omit(dftotal21[,c("ID","year","math","first_treat")]) #baseline
 dftotal4 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","math","first_treat")]) #student char
 dftotal5 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","math","first_treat")]) #ses
 dftotal6 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","math","first_treat")]) #home
-dftotal7 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","math","first_treat")]) #school char
-dftotal8 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","PSI","lpinv","math","first_treat")]) #PSI and lpinv
-dftotal9 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","PSI","lpinv","nschange","math","first_treat")]) #Residential Mobility
+dftotal7 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","sctype","math","first_treat")]) #school char
+dftotal8 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","sctype","PSI","lpinv","math","first_treat")]) #PSI and lpinv
+dftotal9 <- na.omit(dftotal21[,c("ID","year","male","roma","age","lbrthw","hstat","lhincome","welf","mdegree","homesc","nmin","region","maint","sctype","PSI","lpinv","nschange","math","first_treat")]) #Residential Mobility
 
 #unconditional att(g,t)
 att_gt <- att_gt(yname = "math",
@@ -1556,11 +1611,11 @@ att_gtc3 <- att_gt(yname = "math",
                    panel = FALSE,
                    est_method = "reg")
 
-#adding school FE
+#adding school char
 att_gtc4 <- att_gt(yname = "math",
                    tname = "year",
                    gname = "first_treat",
-                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint),
+                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint) + factor(sctype),
                    control_group = "nevertreated",
                    data = dftotal7,
                    bstrap=TRUE,
@@ -1571,7 +1626,7 @@ att_gtc4 <- att_gt(yname = "math",
 att_gtc5 <- att_gt(yname = "math",
                    tname = "year",
                    gname = "first_treat",
-                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint) + PSI + lpinv,
+                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint) + factor(sctype) + PSI + lpinv,
                    control_group = "nevertreated",
                    data = dftotal8,
                    bstrap=TRUE,
@@ -1582,7 +1637,7 @@ att_gtc5 <- att_gt(yname = "math",
 att_gtc6 <- att_gt(yname = "math",
                    tname = "year",
                    gname = "first_treat",
-                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint) + PSI + lpinv + nschange,
+                   xformla = ~ male + roma + age + lbrthw + factor(hstat) + lhincome + factor(welf) + factor(mdegree) + homesc + nmin + factor(region) + factor(maint) + factor(sctype) + PSI + lpinv + nschange,
                    control_group = "nevertreated",
                    data = dftotal9,
                    bstrap=TRUE,
@@ -1682,9 +1737,34 @@ ggdid(did.dync5) +
 ggdid(did.dync6) + 
   geom_smooth(aes(did.dync6$egt, did.dync6$att.egt), lwd = 0.8, col = "black") + 
   geom_vline(xintercept = 0, col = "red", lty = "dashed") +
-  geom_text(aes(x=0.1, label="separation", y=-0.2), colour="red", angle=90, text=element_text(size=11)) +
+  geom_text(aes(x=0.1, label="separation", y=-0.3), colour="red", angle=90, text=element_text(size=11)) +
   labs(title = "Dynamic Aggregated ATT of Parental Separation on Math Grade",
        subtitle = "Covariates: Student + SES + Home + School + PSI + Residential Mobility")
+
+
+# Directed Acyclical Graph (DAG) ------------------------------------------
+
+theme_set(theme_dag())
+
+separation_dag <- dagify(gpa ~ home + school + psi + resmob + ses + stud,
+                         home ~ sep,
+                         school ~ sep,
+                         psi ~ sep,
+                         resmob ~ sep,
+                         labels = c("gpa" = "GPA", 
+                                    "home" = "Home Environment",
+                                    "school" = "School Characteristics",
+                                    "psi" = "Parental School Involvement",
+                                    "resmob" = "Residential Mobility",
+                                    "ses" = "Socioeconomic Status",
+                                    "stud" = "Student Characteristics",
+                                    "sep" = "Parental Separation"),
+                         latent = "sep",
+                         exposure = c("home", "school", "psi", "resmob"),
+                         outcome = "gpa")
+
+ggdag(separation_dag, text = FALSE, use_labels = "label")
+
 
 ###################
 #   END OF CODE   #
