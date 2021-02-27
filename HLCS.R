@@ -1747,10 +1747,11 @@ ggdid(did.dync6) +
 theme_set(theme_dag())
 
 separation_dag <- dagify(gpa ~ home + school + psi + resmob + ses + stud,
-                         home ~ sep,
-                         school ~ sep,
-                         psi ~ sep,
+                         home ~ sep + ses,
+                         school ~ sep + ses,
+                         psi ~ sep + ses,
                          resmob ~ sep,
+                         ses ~ sep
                          labels = c("gpa" = "GPA", 
                                     "home" = "Home Environment",
                                     "school" = "School Characteristics",
@@ -1760,7 +1761,7 @@ separation_dag <- dagify(gpa ~ home + school + psi + resmob + ses + stud,
                                     "stud" = "Student Characteristics",
                                     "sep" = "Parental Separation"),
                          latent = "sep",
-                         exposure = c("home", "school", "psi", "resmob"),
+                         exposure = c("home", "school", "psi", "resmob", "ses"),
                          outcome = "gpa")
 
 ggdag(separation_dag, text = FALSE, use_labels = "label")
