@@ -705,7 +705,11 @@ df2009 <- merge(df2009, df2006[,c("ID", "brthw", "homesc", "nschange")], by = "I
 
 # Mean tables across family structures for starting year of 2006 ------------------------------------
 
-mfinc <- aggregate(df2006[, c('pcons', 'mnsal', 'fnsal')],
+df20062[df2006 == -6 | df2006 == 99 | df2006 == 88 | df2006 == 999 | df2006 == 9999] <- NA
+df2006[,!names(df2006) %in% c("mdegree", "grade",'ekor03','ekor46','ekor714','ekor151','lhincome','scID')][df2006[,!names(df2006) %in%
+                                                                                                                       c("mdegree", "grade",'ekor03','ekor46','ekor714','ekor151','lhincome','scID')] == 9 ] <- NA
+
+mfinc <- aggregate(df2006[, c('pcons', 'mnsal', 'welf')],
                    list(df2006$nintact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
 mgrades <- aggregate(df2006[, c('fgrade', 'math_comp', 'read_comp', 'math', 'gram', 'liter', 'behav', 'dilig')],
@@ -720,11 +724,11 @@ nbrh <- aggregate(df2006[, c('wnbrh', 'cnbrh')],
 pinv <- aggregate(df2006[, c('txtbook', 'transc', 'xtraclass', 'sctrip', 'pinv')],
                    list(df2006$nintact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
-write.table(mfinc, "~/thesis_eletpalya/mfinc.txt", sep="\t")
-write.table(mgrades, "~/thesis_eletpalya/mygrades.txt", sep="\t")
-write.table(mscores, "~/thesis_eletpalya/mscores.txt", sep="\t")
-write.table(nbrh, "~/thesis_eletpalya/nbrh.txt", sep="\t")
-write.table(pinv, "~/thesis_eletpalya/pinv.txt", sep="\t")
+write.table(mfinc, "~/HLCS_BA_thesis/tables/mfinc.txt", sep="\t")
+write.table(mgrades, "~/HLCS_BA_thesis/tables/mygrades.txt", sep="\t")
+write.table(mscores, "~/HLCS_BA_thesis/tables/mscores.txt", sep="\t")
+write.table(nbrh, "~/HLCS_BA_thesis/tables/nbrh.txt", sep="\t")
+write.table(pinv, "~/HLCS_BA_thesis/tables/pinv.txt", sep="\t")
 
 # Descriptive summaries 2006 ----------------------------------------------------
 
@@ -733,7 +737,7 @@ df2006sum <- df2006[, !names(df2006) %in% c('ID', 'mbio', 'fbio', 'mstep', 'fste
                                     graph.magnif = 0.75, valid.col = FALSE, tmp.img.dir = "/tmp") 
 
 df2006sum$Missing <- NULL
-view(df2006sum, file = "~/thesis_eletpalya/df2006sum.html")
+view(df2006sum, file = "~/HLCS_BA_thesis/tables/df2006sum.html")
 
 # Cross tabulations 2006-------------------------------------------------------
 
@@ -743,29 +747,29 @@ fam_str1 <- freq(df2006$fam_str, report.nas = FALSE,
 nintact <- freq(df2006$nintact, report.nas = FALSE, 
                  cumul = FALSE, headings = FALSE)
 
-write.table(fam_str1, "~/thesis_eletpalya/fam_str1.txt", sep="\t")
-write.table(nintact, "~/thesis_eletpalya/nintact.txt", sep="\t")
+write.table(fam_str1, "~/HLCS_BA_thesis/tables/fam_str1.txt", sep="\t")
+write.table(nintact, "~/HLCS_BA_thesis/tables/nintact.txt", sep="\t")
 
 gndr <- ctable(df2006$gender, df2006$nintact, prop = "c", chisq = TRUE)
-write.table(gndr$proportions, "~/thesis_eletpalya/gndr.txt", sep="\t")
+write.table(gndr$proportions, "~/HLCS_BA_thesis/tables/gndr.txt", sep="\t")
 
 rep4 <- ctable(df2006$rep4, df2006$nintact, prop = "c", chisq = TRUE)
-write.table(rep4$proportions, "~/thesis_eletpalya/rep4.txt", sep="\t")
+write.table(rep4$proportions, "~/HLCS_BA_thesis/tables/rep4.txt", sep="\t")
 
 rep58 <- ctable(df2006$rep58, df2006$nintact, prop = "c", chisq = TRUE)
-write.table(rep58$proportions, "~/thesis_eletpalya/rep58.txt", sep="\t")
+write.table(rep58$proportions, "~/HLCS_BA_thesis/tables/rep58.txt", sep="\t")
 
 #residential mobility
 resmob <- ctable(df2006$nschange, df2006$nintact, prop = "c", chisq = TRUE)
-write.table(resmob$proportions, "~/thesis_eletpalya/resmobpp.txt", sep="\t")
+write.table(resmob$proportions, "~/HLCS_BA_thesis/tables/resmobpp.txt", sep="\t")
 
 #suspension and expel
 exp <- ctable(df2006$nexp, df2006$nintact, prop = "c", chisq = TRUE)
-write.table(exp$proportions, "~/thesis_eletpalya/exp.txt", sep="\t")
+write.table(exp$proportions, "~/HLCS_BA_thesis/tables/exp.txt", sep="\t")
 
 #leaving because of weak performance (~ drop out)
 dropout <- ctable(df2006$ndpout, df2006$nintact, prop = "c", chisq = TRUE)
-write.table(dropout$proportions, "~/thesis_eletpalya/dropout.txt", sep="\t")
+write.table(dropout$proportions, "~/HLCS_BA_thesis/tables/dropout.txt", sep="\t")
 
 #for parental involvement
 ctable(df2006$peduc_asp, df2006$nintact, prop = "c", chisq = TRUE, OR = TRUE)
@@ -774,25 +778,25 @@ ctable(df2006$peduc_asp, df2006$nintact, prop = "c", chisq = TRUE, OR = TRUE)
 PSI <- aggregate(df2006[, c("PSI", "pmeet", "pttalk", "studyparent")],
                    list(df2006$nintact), function(x) c(round(mean(x, na.rm = TRUE), 2)))
 
-write.table(PSI, "~/thesis_eletpalya/PSI.txt", sep="\t")
+write.table(PSI, "~/HLCS_BA_thesis/tables/PSI.txt", sep="\t")
 
 #additional parental investments not in home scale
 pinv <- ctable(df2006$pinv, df2006$nintact, prop = "c", chisq = TRUE)
-write.table(pinv$proportions, "~/thesis_eletpalya/pinv.txt", sep="\t")
+write.table(pinv$proportions, "~/HLCS_BA_thesis/tables/pinv.txt", sep="\t")
 
 #roma
 roma <- ctable(df2006$roma, df2006$nintact, prop = "c", chisq = TRUE)
-write.table(roma$proportions, "~/thesis_eletpalya/roma.txt", sep="\t")
+write.table(roma$proportions, "~/HLCS_BA_thesis/tables/roma.txt", sep="\t")
 
 #reason of separation
 divordth <- freq(df2006$divordth, report.nas = FALSE, 
                  cumul = FALSE, headings = FALSE)
 
-write.table(divordth, "~/thesis_eletpalya/divordth.txt", sep="\t")
+write.table(divordth, "~/HLCS_BA_thesis/tables/divordth.txt", sep="\t")
 
 #separation age means
 sepage <- summary(df2006[, c("age_at_sepm", "age_at_sepf")])
-write.table(sepage, "~/thesis_eletpalya/sepage.txt", sep="\t")
+write.table(sepage, "~/HLCS_BA_thesis/tables/sepage.txt", sep="\t")
 
 # Feature selection----------------------------------------------------
 
@@ -829,7 +833,7 @@ cormatdf <- df2006[c('lhincome',
 # res1 <- rcorr(as.matrix(cormatdf))
 # res2 <- flattenCorrMatrix(res1$r, res1$P) #table form
 # 
-# write.table(res2, file = "~/thesis_eletpalya/res2.txt", sep="\t")
+# write.table(res2, file = "~/HLCS_BA_thesis/tables/res2.txt", sep="\t")
 # 
 # # Insignificant correlation are crossed
 # corrplot(res1$r, type="upper", order="hclust", p.mat = res1$P, sig.level = 0.01, tl.col = "black", tl.srt = 45)
@@ -1118,7 +1122,6 @@ dftotal2 <- dftotal2[,!(names(dftotal2) %in% c("intfgrade", "decfgrade"))]
 dftotal2[dftotal2 == -6 | dftotal2 == 99 | dftotal2 == 88 | dftotal2 == 999 | dftotal2 == 9999] <- NA
 dftotal2$fgrade[dftotal2$fgrade > 5 | dftotal2$fgrade < 1] <- NA
 dftotal2$math[dftotal2$math > 5 | dftotal2$math < 1] <- NA
-dftotal2[dftotal2 == -6 | dftotal2 == 99 | dftotal2 == 88 | dftotal2 == 999 | dftotal2 == 9999] <- NA
 dftotal2[,!names(dftotal2) %in% c("mdegree", "grade",'ekor03','ekor46','ekor714','ekor151','lhincome','scID')][dftotal2[,!names(dftotal2) 
                         %in% c("mdegree", "grade",'ekor03','ekor46','ekor714','ekor151','lhincome','scID')] == 9 ] <- NA
 
@@ -1751,7 +1754,7 @@ separation_dag <- dagify(gpa ~ home + school + psi + resmob + ses + stud,
                          school ~ sep + ses,
                          psi ~ sep + ses,
                          resmob ~ sep,
-                         ses ~ sep
+                         ses ~ sep,
                          labels = c("gpa" = "GPA", 
                                     "home" = "Home Environment",
                                     "school" = "School Characteristics",
@@ -1761,7 +1764,6 @@ separation_dag <- dagify(gpa ~ home + school + psi + resmob + ses + stud,
                                     "stud" = "Student Characteristics",
                                     "sep" = "Parental Separation"),
                          latent = "sep",
-                         exposure = c("home", "school", "psi", "resmob", "ses"),
                          outcome = "gpa")
 
 ggdag(separation_dag, text = FALSE, use_labels = "label")
